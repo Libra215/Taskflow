@@ -25,7 +25,3 @@ WantedBy=multi-user.target
 - Backup: `mysqldump taskflow > backup.sql`; restore: `mysql taskflow < backup.sql`; backup juga `storage/uploads`.
 - Update: `git pull && npm ci --omit=dev && sudo systemctl restart taskflow`.
 
-## Belum tersedia di build ini
-Kalender/agenda, riwayat, profil & ganti password, lupa password, pengaturan sistem admin, halaman pengingat fungsional (WhatsApp tetap Coming Soon), unit test, dokumentasi tabel lengkap, tampilan sidebar. Belum diuji pada MySQL/VPS nyata.
-# Taskflow
-Task tracking and workflow management app
