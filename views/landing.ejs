@@ -1,0 +1,1145 @@
+
+<%- include('partials/head', { title: 'Beranda' }) %>
+
+<style>
+    :root {
+        --lp-primary: #4f46e5;
+        --lp-primary-dark: #3730a3;
+        --lp-ink: #172033;
+        --lp-muted: #64748b;
+        --lp-border: #e8eaf2;
+        --lp-soft: #f6f7ff;
+    }
+
+    .landing-page {
+        color: var(--lp-ink);
+        overflow: hidden;
+    }
+
+    .landing-page * {
+        box-sizing: border-box;
+    }
+
+    .lp-hero {
+        position: relative;
+        padding: 76px 0 54px;
+    }
+
+    .lp-hero::before {
+        content: "";
+        position: absolute;
+        width: 420px;
+        height: 420px;
+        top: -180px;
+        left: -180px;
+        border-radius: 50%;
+        background: rgba(99, 102, 241, .07);
+        filter: blur(5px);
+        pointer-events: none;
+    }
+
+    .lp-hero::after {
+        content: "";
+        position: absolute;
+        width: 350px;
+        height: 350px;
+        right: -170px;
+        bottom: -100px;
+        border-radius: 50%;
+        background: rgba(129, 140, 248, .09);
+        pointer-events: none;
+    }
+
+    .lp-hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .lp-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 9px;
+        padding: 9px 14px;
+        border: 1px solid #e0e7ff;
+        background: #eef2ff;
+        color: #4338ca;
+        border-radius: 999px;
+        font-size: .82rem;
+        font-weight: 700;
+        margin-bottom: 25px;
+    }
+
+    .lp-eyebrow i {
+        font-size: 1rem;
+    }
+
+    .lp-title {
+        max-width: 850px;
+        margin: 0 auto 22px;
+        font-size: clamp(2.5rem, 5.5vw, 4.5rem);
+        font-weight: 850;
+        letter-spacing: -.065em;
+        line-height: 1.08;
+    }
+
+    .lp-gradient-text {
+        color: var(--lp-primary);
+        background: linear-gradient(120deg, #4f46e5, #818cf8);
+        -webkit-background-clip: text;
+        background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .lp-description {
+        max-width: 660px;
+        margin: 0 auto;
+        color: var(--lp-muted);
+        font-size: 1.08rem;
+        line-height: 1.85;
+    }
+
+    .lp-actions {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 30px;
+    }
+
+    .lp-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 52px;
+        padding: 13px 23px;
+        border-radius: 14px;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform .2s ease, box-shadow .2s ease,
+                    background .2s ease;
+    }
+
+    .lp-btn-primary {
+        color: #fff;
+        background: var(--lp-primary);
+        border: 1px solid var(--lp-primary);
+        box-shadow: 0 10px 22px rgba(79, 70, 229, .2);
+    }
+
+    .lp-btn-primary:hover {
+        color: #fff;
+        background: var(--lp-primary-dark);
+        transform: translateY(-2px);
+        box-shadow: 0 14px 28px rgba(79, 70, 229, .25);
+    }
+
+    .lp-btn-secondary {
+        color: #334155;
+        background: #fff;
+        border: 1px solid #dce1ec;
+    }
+
+    .lp-btn-secondary:hover {
+        color: var(--lp-primary);
+        background: #f8faff;
+        transform: translateY(-2px);
+    }
+
+    .lp-trust {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 20px;
+        margin-top: 25px;
+        color: #64748b;
+        font-size: .85rem;
+    }
+
+    .lp-trust span {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+    }
+
+    .lp-trust i {
+        color: #16a34a;
+    }
+
+    /* Dashboard preview */
+    .lp-preview-wrap {
+        position: relative;
+        max-width: 970px;
+        margin: 45px auto 0;
+        padding: 0 12px;
+    }
+
+    .lp-preview-glow {
+        position: absolute;
+        inset: 12% 8% -8%;
+        background: rgba(99, 102, 241, .17);
+        filter: blur(55px);
+        border-radius: 40%;
+        z-index: 0;
+    }
+
+    .lp-preview {
+        position: relative;
+        z-index: 1;
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 20px;
+        box-shadow: 0 30px 80px rgba(30, 41, 59, .12);
+        transform: perspective(1200px) rotateX(1deg);
+    }
+
+    .lp-preview-top {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        padding: 16px 20px;
+        border-bottom: 1px solid #edf0f5;
+        background: #fff;
+    }
+
+    .lp-window-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+
+    .lp-window-label {
+        margin-left: 8px;
+        color: #94a3b8;
+        font-size: .78rem;
+    }
+
+    .lp-preview-body {
+        padding: 26px;
+        background: #fbfcff;
+    }
+
+    .lp-preview-heading {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 15px;
+        margin-bottom: 22px;
+    }
+
+    .lp-preview-heading h5 {
+        margin: 0 0 5px;
+        font-weight: 800;
+    }
+
+    .lp-preview-heading p {
+        margin: 0;
+        color: #94a3b8;
+        font-size: .82rem;
+    }
+
+    .lp-preview-add {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 9px 13px;
+        color: #fff;
+        background: var(--lp-primary);
+        border-radius: 10px;
+        font-size: .8rem;
+        font-weight: 700;
+    }
+
+    .lp-stat {
+        height: 100%;
+        padding: 17px;
+        background: #fff;
+        border: 1px solid #e8ebf3;
+        border-radius: 14px;
+    }
+
+    .lp-stat-label {
+        color: #64748b;
+        font-size: .78rem;
+    }
+
+    .lp-stat-number {
+        margin-top: 8px;
+        font-size: 1.8rem;
+        font-weight: 800;
+        letter-spacing: -.04em;
+    }
+
+    .lp-stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        border-radius: 11px;
+        font-size: 1.1rem;
+    }
+
+    .lp-preview-task {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px 14px;
+        margin-top: 10px;
+        background: #fff;
+        border: 1px solid #edf0f5;
+        border-radius: 12px;
+    }
+
+    .lp-task-check {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 20px;
+        height: 20px;
+        flex-shrink: 0;
+        border: 1.5px solid #cbd5e1;
+        border-radius: 6px;
+    }
+
+    .lp-task-name {
+        font-size: .85rem;
+        font-weight: 700;
+    }
+
+    .lp-task-sub {
+        margin-top: 3px;
+        color: #94a3b8;
+        font-size: .73rem;
+    }
+
+    .lp-task-status {
+        margin-left: auto;
+        white-space: nowrap;
+        padding: 5px 8px;
+        background: #fff7ed;
+        color: #c2410c;
+        border-radius: 7px;
+        font-size: .7rem;
+        font-weight: 700;
+    }
+
+    /* Shared sections */
+    .lp-section {
+        padding: 76px 0;
+    }
+
+    .lp-section-soft {
+        background: var(--lp-soft);
+        border-top: 1px solid #eff0ff;
+        border-bottom: 1px solid #eff0ff;
+    }
+
+    .lp-section-heading {
+        max-width: 650px;
+        margin: 0 auto 42px;
+        text-align: center;
+    }
+
+    .lp-section-kicker {
+        display: inline-block;
+        margin-bottom: 12px;
+        color: var(--lp-primary);
+        font-size: .78rem;
+        font-weight: 800;
+        letter-spacing: .1em;
+        text-transform: uppercase;
+    }
+
+    .lp-section-title {
+        margin-bottom: 13px;
+        font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+        font-weight: 850;
+        letter-spacing: -.045em;
+        line-height: 1.2;
+    }
+
+    .lp-section-description {
+        color: var(--lp-muted);
+        line-height: 1.8;
+        margin-bottom: 0;
+    }
+
+    .lp-feature-card {
+        height: 100%;
+        padding: 27px;
+        background: #fff;
+        border: 1px solid var(--lp-border);
+        border-radius: 18px;
+        transition: transform .22s ease, box-shadow .22s ease,
+                    border-color .22s ease;
+    }
+
+    .lp-feature-card:hover {
+        transform: translateY(-5px);
+        border-color: #c7d2fe;
+        box-shadow: 0 18px 38px rgba(30, 41, 59, .07);
+    }
+
+    .lp-feature-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        margin-bottom: 21px;
+        border-radius: 15px;
+        font-size: 1.45rem;
+    }
+
+    .lp-feature-card h3 {
+        margin-bottom: 11px;
+        font-size: 1.08rem;
+        font-weight: 800;
+    }
+
+    .lp-feature-card p {
+        margin: 0;
+        color: var(--lp-muted);
+        font-size: .91rem;
+        line-height: 1.8;
+    }
+
+    .lp-step-card {
+        position: relative;
+        height: 100%;
+        padding: 27px 23px;
+        text-align: center;
+        background: #fff;
+        border: 1px solid var(--lp-border);
+        border-radius: 18px;
+    }
+
+    .lp-step-number {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 19px;
+        color: #fff;
+        background: var(--lp-primary);
+        border-radius: 15px;
+        font-size: 1.1rem;
+        font-weight: 800;
+        box-shadow: 0 8px 18px rgba(79, 70, 229, .2);
+    }
+
+    .lp-step-card h3 {
+        font-size: 1.05rem;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+
+    .lp-step-card p {
+        color: var(--lp-muted);
+        font-size: .9rem;
+        line-height: 1.8;
+        margin-bottom: 0;
+    }
+
+    .lp-faq {
+        overflow: hidden;
+        border: 1px solid var(--lp-border);
+        border-radius: 16px;
+        background: #fff;
+    }
+
+    .lp-faq .accordion-item {
+        border: 0;
+        border-bottom: 1px solid var(--lp-border);
+    }
+
+    .lp-faq .accordion-item:last-child {
+        border-bottom: 0;
+    }
+
+    .lp-faq .accordion-button {
+        padding: 20px 22px;
+        color: var(--lp-ink);
+        font-weight: 700;
+        box-shadow: none;
+    }
+
+    .lp-faq .accordion-button:not(.collapsed) {
+        color: var(--lp-primary-dark);
+        background: #f5f6ff;
+    }
+
+    .lp-faq .accordion-body {
+        padding: 0 22px 22px;
+        color: var(--lp-muted);
+        line-height: 1.8;
+        font-size: .92rem;
+    }
+
+    .lp-cta {
+        position: relative;
+        overflow: hidden;
+        padding: 52px 30px;
+        color: #fff;
+        text-align: center;
+        background: linear-gradient(125deg, #3730a3 0%, #4f46e5 55%, #6366f1 100%);
+        border-radius: 24px;
+        box-shadow: 0 22px 50px rgba(79, 70, 229, .18);
+    }
+
+    .lp-cta::before,
+    .lp-cta::after {
+        content: "";
+        position: absolute;
+        width: 230px;
+        height: 230px;
+        border: 1px solid rgba(255,255,255,.14);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .lp-cta::before {
+        top: -130px;
+        left: -50px;
+    }
+
+    .lp-cta::after {
+        right: -80px;
+        bottom: -160px;
+        width: 300px;
+        height: 300px;
+    }
+
+    .lp-cta-content {
+        position: relative;
+        z-index: 1;
+        max-width: 650px;
+        margin: 0 auto;
+    }
+
+    .lp-cta h2 {
+        margin-bottom: 14px;
+        font-size: clamp(1.8rem, 4vw, 2.6rem);
+        font-weight: 850;
+        letter-spacing: -.04em;
+    }
+
+    .lp-cta p {
+        margin-bottom: 25px;
+        color: rgba(255,255,255,.8);
+        line-height: 1.8;
+    }
+
+    .lp-footer-links {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 12px 22px;
+        padding: 26px 0 12px;
+        border-top: 1px solid var(--lp-border);
+    }
+
+    .lp-footer-links a {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        color: #64748b;
+        font-size: .85rem;
+        text-decoration: none;
+        transition: color .2s ease;
+    }
+
+    .lp-footer-links a:hover {
+        color: var(--lp-primary);
+    }
+
+    @keyframes lp-enter {
+        from {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .lp-animate {
+        animation: lp-enter .65s ease both;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .lp-animate {
+            animation: none;
+        }
+
+        .lp-feature-card,
+        .lp-btn {
+            transition: none;
+        }
+    }
+
+    @media (max-width: 767.98px) {
+        .lp-hero {
+            padding: 46px 0 35px;
+        }
+
+        .lp-title {
+            font-size: clamp(2.3rem, 10vw, 3.25rem);
+        }
+
+        .lp-description {
+            font-size: .98rem;
+        }
+
+        .lp-actions {
+            flex-direction: column;
+        }
+
+        .lp-btn {
+            width: 100%;
+        }
+
+        .lp-preview-wrap {
+            margin-top: 32px;
+            padding: 0;
+        }
+
+        .lp-preview {
+            border-radius: 15px;
+            transform: none;
+        }
+
+        .lp-preview-body {
+            padding: 15px;
+        }
+
+        .lp-preview-top {
+            padding: 12px 14px;
+        }
+
+        .lp-preview-heading {
+            align-items: flex-start;
+        }
+
+        .lp-preview-add {
+            font-size: .72rem;
+            padding: 8px 9px;
+        }
+
+        .lp-stat {
+            padding: 12px;
+        }
+
+        .lp-stat-number {
+            font-size: 1.45rem;
+        }
+
+        .lp-stat-label {
+            font-size: .7rem;
+        }
+
+        .lp-task-status {
+            display: none;
+        }
+
+        .lp-section {
+            padding: 55px 0;
+        }
+
+        .lp-section-heading {
+            margin-bottom: 30px;
+        }
+
+        .lp-feature-card {
+            padding: 22px;
+        }
+
+        .lp-cta {
+            padding: 38px 22px;
+            border-radius: 19px;
+        }
+    }
+</style>
+
+<div class="landing-page">
+
+    <!-- HERO -->
+    <section class="lp-hero">
+        <div class="container lp-hero-content lp-animate">
+            <div class="text-center">
+                <div class="lp-eyebrow">
+                    <i class="bi bi-stars"></i>
+                    Ruang produktivitas akademikmu
+                </div>
+
+                <h1 class="lp-title">
+                    Tugas Lebih Teratur,
+                    <span class="lp-gradient-text">Hari Lebih Produktif.</span>
+                </h1>
+
+                <p class="lp-description">
+                    <%= appName %> membantumu mencatat tugas, mengatur
+                    prioritas, memantau deadline, dan menyimpan dokumen
+                    akademik dalam satu tempat yang mudah digunakan.
+                </p>
+
+                <div class="lp-actions">
+                    <a href="/register" class="lp-btn lp-btn-primary">
+                        Mulai Sekarang
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+
+                    <a href="/login" class="lp-btn lp-btn-secondary">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Masuk ke Akun
+                    </a>
+                </div>
+
+                <div class="lp-trust">
+                    <span><i class="bi bi-check-circle-fill"></i> Mudah digunakan</span>
+                    <span><i class="bi bi-check-circle-fill"></i> Tugas lebih terorganisir</span>
+                    <span><i class="bi bi-check-circle-fill"></i> Akses melalui browser</span>
+                </div>
+            </div>
+
+            <!-- PREVIEW DASHBOARD -->
+            <div class="lp-preview-wrap">
+                <div class="lp-preview-glow"></div>
+
+                <div class="lp-preview">
+                    <div class="lp-preview-top">
+                        <span class="lp-window-dot bg-danger"></span>
+                        <span class="lp-window-dot bg-warning"></span>
+                        <span class="lp-window-dot bg-success"></span>
+                        <span class="lp-window-label">
+                            <i class="bi bi-grid-1x2 me-1"></i>
+                            <%= appName %> / Dashboard
+                        </span>
+                    </div>
+
+                    <div class="lp-preview-body">
+                        <div class="lp-preview-heading">
+                            <div>
+                                <h5>Ringkasan Aktivitas</h5>
+                                <p>Contoh tampilan pengelolaan tugas</p>
+                            </div>
+
+                            <div class="lp-preview-add">
+                                <i class="bi bi-plus-lg"></i>
+                                Tugas Baru
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-6 col-md-3">
+                                <div class="lp-stat">
+                                    <div class="d-flex justify-content-between align-items-center gap-2">
+                                        <span class="lp-stat-label">Total Tugas</span>
+                                        <span class="lp-stat-icon bg-primary bg-opacity-10 text-primary">
+                                            <i class="bi bi-list-check"></i>
+                                        </span>
+                                    </div>
+                                    <div class="lp-stat-number">12</div>
+                                </div>
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <div class="lp-stat">
+                                    <div class="d-flex justify-content-between align-items-center gap-2">
+                                        <span class="lp-stat-label">Belum Selesai</span>
+                                        <span class="lp-stat-icon bg-warning bg-opacity-10 text-warning">
+                                            <i class="bi bi-hourglass-split"></i>
+                                        </span>
+                                    </div>
+                                    <div class="lp-stat-number">4</div>
+                                </div>
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <div class="lp-stat">
+                                    <div class="d-flex justify-content-between align-items-center gap-2">
+                                        <span class="lp-stat-label">Selesai</span>
+                                        <span class="lp-stat-icon bg-success bg-opacity-10 text-success">
+                                            <i class="bi bi-check2-circle"></i>
+                                        </span>
+                                    </div>
+                                    <div class="lp-stat-number">8</div>
+                                </div>
+                            </div>
+
+                            <div class="col-6 col-md-3">
+                                <div class="lp-stat">
+                                    <div class="d-flex justify-content-between align-items-center gap-2">
+                                        <span class="lp-stat-label">Deadline</span>
+                                        <span class="lp-stat-icon bg-danger bg-opacity-10 text-danger">
+                                            <i class="bi bi-calendar-event"></i>
+                                        </span>
+                                    </div>
+                                    <div class="lp-stat-number">2</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-bold small">Contoh Daftar Tugas</span>
+                            <span class="small text-primary fw-semibold">Lihat semua</span>
+                        </div>
+
+                        <div class="lp-preview-task">
+                            <span class="lp-task-check"></span>
+                            <div>
+                                <div class="lp-task-name">Menyusun laporan praktikum</div>
+                                <div class="lp-task-sub">
+                                    <i class="bi bi-book me-1"></i> Mata kuliah
+                                    <span class="mx-1">·</span>
+                                    <i class="bi bi-calendar3 me-1"></i> Deadline mendatang
+                                </div>
+                            </div>
+                            <span class="lp-task-status">Proses</span>
+                        </div>
+
+                        <div class="lp-preview-task">
+                            <span class="lp-task-check"></span>
+                            <div>
+                                <div class="lp-task-name">Membuat presentasi kelompok</div>
+                                <div class="lp-task-sub">
+                                    <i class="bi bi-people me-1"></i> Tugas kelompok
+                                    <span class="mx-1">·</span>
+                                    <i class="bi bi-paperclip me-1"></i> Dokumen
+                                </div>
+                            </div>
+                            <span class="lp-task-status">Belum</span>
+                        </div>
+
+                        <div class="lp-preview-task">
+                            <span class="lp-task-check">
+                                <i class="bi bi-check2 text-success"></i>
+                            </span>
+                            <div>
+                                <div class="lp-task-name">Menyelesaikan latihan mingguan</div>
+                                <div class="lp-task-sub">
+                                    <i class="bi bi-check-circle me-1"></i> Progres tugas
+                                </div>
+                            </div>
+                            <span class="badge bg-success bg-opacity-10 text-success">Selesai</span>
+                        </div>
+
+                        <div class="text-center mt-3 text-muted"
+                             style="font-size:.72rem;">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Ilustrasi tampilan, bukan data tugas akun sebenarnya.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FITUR -->
+    <section class="lp-section lp-section-soft" id="features">
+        <div class="container">
+            <div class="lp-section-heading">
+                <span class="lp-section-kicker">Fitur Utama</span>
+                <h2 class="lp-section-title">
+                    Semua kebutuhan tugas dalam satu tempat
+                </h2>
+                <p class="lp-section-description">
+                    Susun aktivitas akademik dengan lebih terarah tanpa
+                    harus berpindah-pindah aplikasi untuk mencatat tugas.
+                </p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="lp-feature-card">
+                        <div class="lp-feature-icon bg-primary bg-opacity-10 text-primary">
+                            <i class="bi bi-kanban"></i>
+                        </div>
+                        <h3>Manajemen Tugas</h3>
+                        <p>
+                            Catat tugas, tambahkan informasi mata kuliah,
+                            dan atur prioritas serta status pengerjaan
+                            agar aktivitas lebih terstruktur.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="lp-feature-card">
+                        <div class="lp-feature-icon bg-warning bg-opacity-10 text-warning">
+                            <i class="bi bi-calendar2-check"></i>
+                        </div>
+                        <h3>Pemantauan Deadline</h3>
+                        <p>
+                            Catat batas pengumpulan dan pantau tugas yang
+                            perlu segera dikerjakan agar jadwal lebih mudah
+                            dikendalikan.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="lp-feature-card">
+                        <div class="lp-feature-icon bg-success bg-opacity-10 text-success">
+                            <i class="bi bi-folder2-open"></i>
+                        </div>
+                        <h3>Arsip Dokumen</h3>
+                        <p>
+                            Simpan lampiran pendukung pada tugas sehingga
+                            dokumen lebih mudah ditemukan saat dibutuhkan.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="lp-feature-card">
+                        <div class="lp-feature-icon bg-info bg-opacity-10 text-info">
+                            <i class="bi bi-speedometer2"></i>
+                        </div>
+                        <h3>Dashboard Ringkas</h3>
+                        <p>
+                            Lihat ringkasan tugas dan progres pengerjaan
+                            dalam satu tampilan untuk membantu menentukan
+                            langkah berikutnya.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="lp-feature-card">
+                        <div class="lp-feature-icon bg-danger bg-opacity-10 text-danger">
+                            <i class="bi bi-calendar-week"></i>
+                        </div>
+                        <h3>Kalender Akademik</h3>
+                        <p>
+                            Susun agenda akademik dan lihat jadwal penting
+                            agar rencana kegiatan lebih mudah dipersiapkan.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-6 col-lg-4">
+                    <article class="lp-feature-card">
+                        <div class="lp-feature-icon bg-purple bg-opacity-10 text-primary"
+                             style="background:#f0eaff !important;">
+                            <i class="bi bi-collection"></i>
+                        </div>
+                        <h3>Kelompok Tugas</h3>
+                        <p>
+                            Kelompokkan pekerjaan sesuai kebutuhan agar
+                            daftar tugas lebih rapi dan mudah dikelola.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CARA KERJA -->
+    <section class="lp-section">
+        <div class="container">
+            <div class="lp-section-heading">
+                <span class="lp-section-kicker">Cara Kerja</span>
+                <h2 class="lp-section-title">Mulai dengan tiga langkah</h2>
+                <p class="lp-section-description">
+                    Bangun kebiasaan mengelola tugas dengan langkah yang
+                    sederhana dan mudah diikuti.
+                </p>
+            </div>
+
+            <div class="row g-4">
+                <div class="col-12 col-md-4">
+                    <article class="lp-step-card">
+                        <div class="lp-step-number">01</div>
+                        <h3>Buat Akun</h3>
+                        <p>
+                            Daftarkan akun untuk mulai menggunakan ruang
+                            pengelolaan tugas pribadi.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <article class="lp-step-card">
+                        <div class="lp-step-number">02</div>
+                        <h3>Catat Aktivitas</h3>
+                        <p>
+                            Masukkan tugas, tentukan deadline, pilih
+                            prioritas, dan tambahkan dokumen bila diperlukan.
+                        </p>
+                    </article>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <article class="lp-step-card">
+                        <div class="lp-step-number">03</div>
+                        <h3>Pantau Progres</h3>
+                        <p>
+                            Periksa daftar tugas secara berkala dan perbarui
+                            status ketika pekerjaan mengalami kemajuan.
+                        </p>
+                    </article>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="lp-section lp-section-soft" id="faq">
+        <div class="container">
+            <div class="lp-section-heading">
+                <span class="lp-section-kicker">FAQ</span>
+                <h2 class="lp-section-title">Pertanyaan yang sering diajukan</h2>
+                <p class="lp-section-description">
+                    Beberapa hal yang perlu diketahui sebelum mulai menggunakan
+                    <%= appName %>.
+                </p>
+            </div>
+
+            <div class="lp-faq accordion" id="lpFaq">
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="lpFaqHeadingOne">
+                        <button class="accordion-button"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#lpFaqOne"
+                                aria-expanded="true"
+                                aria-controls="lpFaqOne">
+                            Apa fungsi utama aplikasi ini?
+                        </button>
+                    </h3>
+                    <div id="lpFaqOne"
+                         class="accordion-collapse collapse show"
+                         aria-labelledby="lpFaqHeadingOne"
+                         data-bs-parent="#lpFaq">
+                        <div class="accordion-body">
+                            Aplikasi ini membantu mengelola tugas akademik,
+                            memantau tenggat waktu, mencatat progres, dan
+                            menyimpan lampiran tugas dalam satu tempat.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="lpFaqHeadingTwo">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#lpFaqTwo"
+                                aria-expanded="false"
+                                aria-controls="lpFaqTwo">
+                            Bagaimana cara mulai menggunakannya?
+                        </button>
+                    </h3>
+                    <div id="lpFaqTwo"
+                         class="accordion-collapse collapse"
+                         aria-labelledby="lpFaqHeadingTwo"
+                         data-bs-parent="#lpFaq">
+                        <div class="accordion-body">
+                            Pilih tombol Mulai Sekarang untuk membuka halaman
+                            pendaftaran. Setelah memiliki akun, masuk dan
+                            mulai tambahkan tugas yang ingin dikelola.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="lpFaqHeadingThree">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#lpFaqThree"
+                                aria-expanded="false"
+                                aria-controls="lpFaqThree">
+                            Apakah saya bisa menyimpan file tugas?
+                        </button>
+                    </h3>
+                    <div id="lpFaqThree"
+                         class="accordion-collapse collapse"
+                         aria-labelledby="lpFaqHeadingThree"
+                         data-bs-parent="#lpFaq">
+                        <div class="accordion-body">
+                            Fitur lampiran dapat digunakan untuk menyimpan
+                            dokumen pendukung pada tugas sesuai format file
+                            yang diizinkan oleh aplikasi.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="accordion-item">
+                    <h3 class="accordion-header" id="lpFaqHeadingFour">
+                        <button class="accordion-button collapsed"
+                                type="button"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#lpFaqFour"
+                                aria-expanded="false"
+                                aria-controls="lpFaqFour">
+                            Apakah aplikasi ini gratis?
+                        </button>
+                    </h3>
+                    <div id="lpFaqFour"
+                         class="accordion-collapse collapse"
+                         aria-labelledby="lpFaqHeadingFour"
+                         data-bs-parent="#lpFaq">
+                        <div class="accordion-body">
+                            Informasi biaya mengikuti kebijakan layanan yang
+                            diterapkan oleh pengelola aplikasi. Silakan lihat
+                            informasi yang tersedia saat proses pendaftaran.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA -->
+    <section class="lp-section">
+        <div class="container">
+            <div class="lp-cta">
+                <div class="lp-cta-content">
+                    <div class="mb-3">
+                        <i class="bi bi-rocket-takeoff fs-2"></i>
+                    </div>
+
+                    <h2>Mulai atur tugasmu hari ini</h2>
+
+                    <p>
+                        Buat daftar tugas yang lebih rapi, tentukan prioritas,
+                        dan pantau progres akademikmu melalui satu tempat.
+                    </p>
+
+                    <a href="/register"
+                       class="lp-btn bg-white text-primary">
+                        Buat Akun
+                        <i class="bi bi-arrow-right"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- FOOTER LINKS -->
+            <footer class="lp-footer-links">
+                <a href="/privacy">
+                    <i class="bi bi-shield-check"></i>
+                    Kebijakan Privasi
+                </a>
+
+                <a href="/docs">
+                    <i class="bi bi-file-earmark-code"></i>
+                    Dokumentasi API
+                </a>
+
+                <a href="/login">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Masuk
+                </a>
+            </footer>
+        </div>
+    </section>
+
+</div>
+
+<%- include('partials/foot') %>

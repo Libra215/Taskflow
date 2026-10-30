@@ -1,0 +1,295 @@
+
+<%- include('partials/head', { title: 'Masuk' }) %>
+
+<style>
+    @keyframes loginFadeIn {
+        from {
+            opacity: 0;
+            transform: translateY(18px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .login-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 16px;
+        background:
+            radial-gradient(ellipse at top left, rgba(99, 102, 241, 0.11), transparent 42%),
+            radial-gradient(ellipse at bottom right, rgba(79, 70, 229, 0.08), transparent 40%),
+            #f8fafc;
+    }
+
+    .login-wrapper {
+        width: 100%;
+        max-width: 440px;
+        animation: loginFadeIn 0.55s ease both;
+    }
+
+    .login-card {
+        overflow: hidden;
+        border: 1px solid #e8eaf2;
+        border-radius: 24px;
+        background: #ffffff;
+        box-shadow: 0 24px 65px rgba(15, 23, 42, 0.08);
+    }
+
+    .login-header {
+        padding: 36px 32px 24px;
+        text-align: center;
+    }
+
+    .login-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 68px;
+        height: 68px;
+        margin-bottom: 20px;
+        border-radius: 21px;
+        color: #ffffff;
+        font-size: 28px;
+        background: linear-gradient(135deg, #4f46e5, #818cf8);
+        box-shadow: 0 10px 24px rgba(79, 70, 229, 0.23);
+    }
+
+    .login-title {
+        margin: 0 0 9px;
+        color: #0f172a;
+        font-size: 27px;
+        font-weight: 800;
+        letter-spacing: -0.8px;
+    }
+
+    .login-subtitle {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .login-body {
+        padding: 0 32px 32px;
+    }
+
+    .login-field {
+        margin-bottom: 21px;
+    }
+
+    .login-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .login-input-group {
+        display: flex;
+        align-items: stretch;
+        width: 100%;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .login-input-group:focus-within {
+        border-color: #818cf8;
+        background: #ffffff;
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.11);
+    }
+
+    .login-input-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        flex-shrink: 0;
+        color: #818cf8;
+        font-size: 17px;
+        transition: color 0.2s ease;
+    }
+
+    .login-input-group:focus-within .login-input-icon {
+        color: #4f46e5;
+    }
+
+    .login-input {
+        width: 100%;
+        min-width: 0;
+        min-height: 48px;
+        padding: 12px 14px 12px 0;
+        border: 0;
+        outline: 0;
+        color: #0f172a;
+        background: transparent;
+        font-size: 14px;
+        box-shadow: none !important;
+    }
+
+    .login-input::placeholder {
+        color: #a0aabd;
+    }
+
+    .login-submit {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        width: 100%;
+        min-height: 49px;
+        margin-top: 8px;
+        padding: 12px 18px;
+        border: none;
+        border-radius: 13px;
+        color: #ffffff;
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(79, 70, 229, 0.19);
+        transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+    }
+
+    .login-submit:hover {
+        transform: translateY(-2px);
+        background: linear-gradient(135deg, #4338ca, #4f46e5);
+        box-shadow: 0 12px 24px rgba(79, 70, 229, 0.26);
+    }
+
+    .login-submit:active {
+        transform: translateY(0);
+    }
+
+    .login-footer {
+        margin-top: 22px;
+        color: #94a3b8;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .login-footer i {
+        margin-right: 5px;
+        color: #6366f1;
+    }
+
+    @media (max-width: 480px) {
+        .login-page {
+            padding: 24px 12px;
+        }
+
+        .login-header {
+            padding: 30px 22px 22px;
+        }
+
+        .login-body {
+            padding: 0 22px 27px;
+        }
+
+        .login-title {
+            font-size: 24px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .login-wrapper {
+            animation: none;
+        }
+
+        .login-submit,
+        .login-input-group,
+        .login-input-icon {
+            transition: none;
+        }
+    }
+</style>
+
+<div class="login-page">
+    <div class="login-wrapper">
+        <div class="login-card">
+
+            <div class="login-header">
+                <div class="login-logo">
+                    <i class="bi bi-shield-lock-fill"></i>
+                </div>
+
+                <h1 class="login-title">Selamat Datang</h1>
+
+                <p class="login-subtitle">
+                    Masuk ke akunmu untuk melanjutkan
+                    aktivitas dan mengelola tugas di TaskFlow.
+                </p>
+            </div>
+
+            <div class="login-body">
+                <form method="post" action="/login" class="needs-validation" novalidate>
+                    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+                    <div class="login-field">
+                        <label class="login-label" for="login-email">
+                            Email
+                        </label>
+
+                        <div class="login-input-group">
+                            <span class="login-input-icon">
+                                <i class="bi bi-envelope"></i>
+                            </span>
+
+                            <input
+                                id="login-email"
+                                class="login-input"
+                                type="email"
+                                name="email"
+                                placeholder="nama@email.com"
+                                autocomplete="email"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="login-field">
+                        <label class="login-label" for="login-password">
+                            Password
+                        </label>
+
+                        <div class="login-input-group">
+                            <span class="login-input-icon">
+                                <i class="bi bi-lock"></i>
+                            </span>
+
+                            <input
+                                id="login-password"
+                                class="login-input"
+                                type="password"
+                                name="password"
+                                placeholder="Masukkan password"
+                                autocomplete="current-password"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <button type="submit" class="login-submit">
+                        <i class="bi bi-box-arrow-in-right"></i>
+                        Masuk ke Akun
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="login-footer">
+            <i class="bi bi-shield-check"></i>
+            &copy; 2026 Beckend-API. Secure Access.
+        </div>
+    </div>
+</div>
+
+<%- include('partials/foot') %>

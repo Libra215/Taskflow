@@ -1,0 +1,857 @@
+
+<%- include('partials/head', { title: 'Daftar Tugas' }) %>
+
+<style>
+    .task-page {
+        --tp-primary: #4f46e5;
+        --tp-border: #e8eaf2;
+        --tp-muted: #737991;
+        color: #20243a;
+        animation: tpEnter .45s ease both;
+    }
+
+    @keyframes tpEnter {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-page .text-muted {
+        color: var(--tp-muted) !important;
+    }
+
+    .task-page-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 25px;
+    }
+
+    .task-page-title {
+        font-size: clamp(1.45rem, 3vw, 1.85rem);
+        font-weight: 800;
+        letter-spacing: -.7px;
+        margin-bottom: 7px;
+    }
+
+    .task-page-subtitle {
+        color: var(--tp-muted);
+        font-size: .87rem;
+        margin-bottom: 0;
+        line-height: 1.6;
+    }
+
+    .tp-primary-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        padding: 11px 16px;
+        border: 1px solid var(--tp-primary);
+        border-radius: 11px;
+        background: var(--tp-primary);
+        color: white;
+        font-size: .85rem;
+        font-weight: 650;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: .2s ease;
+    }
+
+    .tp-primary-btn:hover {
+        background: #4338ca;
+        color: white;
+        transform: translateY(-1px);
+        box-shadow: 0 7px 18px rgba(79, 70, 229, .2);
+    }
+
+    .tp-summary-card {
+        height: 100%;
+        padding: 18px;
+        background: white;
+        border: 1px solid var(--tp-border);
+        border-radius: 16px;
+        transition: .2s ease;
+    }
+
+    .tp-summary-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 9px 24px rgba(30, 41, 59, .05);
+    }
+
+    .tp-summary-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+    }
+
+    .tp-summary-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        border-radius: 12px;
+        font-size: 1.1rem;
+    }
+
+    .tp-icon-total {
+        background: #eef2ff;
+        color: #4f46e5;
+    }
+
+    .tp-icon-open {
+        background: #fff7e6;
+        color: #c47b08;
+    }
+
+    .tp-icon-progress {
+        background: #eaf3ff;
+        color: #2563eb;
+    }
+
+    .tp-icon-done {
+        background: #e9f9ef;
+        color: #15803d;
+    }
+
+    .tp-summary-label {
+        margin-top: 15px;
+        font-size: .79rem;
+        font-weight: 550;
+        color: var(--tp-muted);
+    }
+
+    .tp-summary-value {
+        margin-top: 3px;
+        font-size: 1.85rem;
+        font-weight: 800;
+        letter-spacing: -1px;
+        line-height: 1.3;
+    }
+
+    .tp-summary-note {
+        margin-top: 5px;
+        color: var(--tp-muted);
+        font-size: .73rem;
+    }
+
+    .tp-panel {
+        background: #fff;
+        border: 1px solid var(--tp-border);
+        border-radius: 17px;
+        overflow: hidden;
+    }
+
+    .tp-filter-header {
+        padding: 20px 22px;
+        border-bottom: 1px solid #f0f1f6;
+    }
+
+    .tp-section-title {
+        font-size: .98rem;
+        font-weight: 750;
+        letter-spacing: -.2px;
+        margin-bottom: 5px;
+    }
+
+    .tp-section-description {
+        font-size: .79rem;
+        color: var(--tp-muted);
+        margin-bottom: 0;
+    }
+
+    .tp-filter-body {
+        padding: 18px 22px;
+    }
+
+    .tp-input-label {
+        display: block;
+        margin-bottom: 7px;
+        color: #444a62;
+        font-size: .78rem;
+        font-weight: 650;
+    }
+
+    .tp-input,
+    .tp-select {
+        min-height: 43px;
+        background-color: #f8f9fc;
+        border: 1px solid #e6e8f0;
+        border-radius: 10px;
+        font-size: .84rem;
+    }
+
+    .tp-input:focus,
+    .tp-select:focus {
+        background: white;
+        border-color: #a5b4fc;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, .1);
+    }
+
+    .tp-filter-submit {
+        min-height: 43px;
+        border-radius: 10px;
+        font-size: .83rem;
+        font-weight: 650;
+    }
+
+    .tp-table-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 19px 22px;
+        border-bottom: 1px solid #f0f1f6;
+    }
+
+    .tp-result-count {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: #4f46e5;
+        background: #eef2ff;
+        padding: 6px 10px;
+        border-radius: 8px;
+        font-size: .75rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .tp-table {
+        margin-bottom: 0;
+        vertical-align: middle;
+        min-width: 760px;
+    }
+
+    .tp-table thead th {
+        padding: 13px 18px;
+        background: #f8f9fc;
+        border-bottom: 1px solid #eceef5;
+        color: #7c8298;
+        font-size: .69rem;
+        font-weight: 750;
+        letter-spacing: .65px;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .tp-table tbody td {
+        padding: 17px 18px;
+        border-bottom: 1px solid #f0f1f6;
+    }
+
+    .tp-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+
+    .tp-table tbody tr {
+        transition: background .18s ease;
+    }
+
+    .tp-table tbody tr:hover {
+        background: #fafaff;
+    }
+
+    .tp-task-cell {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 220px;
+    }
+
+    .tp-task-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 41px;
+        height: 41px;
+        color: #4f46e5;
+        background: #eef2ff;
+        border-radius: 12px;
+        font-size: 1.05rem;
+    }
+
+    .tp-task-name {
+        display: inline-block;
+        max-width: 245px;
+        color: #252942;
+        font-size: .85rem;
+        font-weight: 700;
+        text-decoration: none;
+        overflow-wrap: anywhere;
+    }
+
+    .tp-task-name:hover {
+        color: var(--tp-primary);
+    }
+
+    .tp-task-subject {
+        margin-top: 5px;
+        color: var(--tp-muted);
+        font-size: .74rem;
+    }
+
+    .tp-deadline-date {
+        color: #343950;
+        font-size: .8rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .tp-deadline-caption {
+        margin-top: 5px;
+        color: var(--tp-muted);
+        font-size: .72rem;
+    }
+
+    .tp-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 9px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-size: .72rem;
+        font-weight: 650;
+        white-space: nowrap;
+    }
+
+    .tp-priority-low {
+        color: #64748b;
+        background: #f1f5f9;
+        border-color: #e2e8f0;
+    }
+
+    .tp-priority-medium {
+        color: #a16207;
+        background: #fef9c3;
+        border-color: #fde68a;
+    }
+
+    .tp-priority-high {
+        color: #b91c1c;
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+
+    .tp-status-open {
+        color: #a16207;
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+
+    .tp-status-progress {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .tp-status-done {
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .tp-status-default {
+        color: #64748b;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+
+    .tp-late {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        margin-top: 7px;
+        padding: 4px 7px;
+        border-radius: 6px;
+        color: #b91c1c;
+        background: #fef2f2;
+        font-size: .68rem;
+        font-weight: 700;
+    }
+
+    .tp-row-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 33px;
+        height: 33px;
+        color: #68708a;
+        background: white;
+        border: 1px solid #e8eaf2;
+        border-radius: 9px;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .tp-row-action:hover {
+        color: #4f46e5;
+        border-color: #c7d2fe;
+        background: #eef2ff;
+    }
+
+    .tp-empty {
+        padding: 55px 20px;
+        text-align: center;
+    }
+
+    .tp-empty-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 65px;
+        height: 65px;
+        margin: 0 auto 16px;
+        color: #64748b;
+        background: #f1f5f9;
+        border-radius: 20px;
+        font-size: 1.65rem;
+    }
+
+    .tp-empty-title {
+        font-size: .98rem;
+        font-weight: 750;
+    }
+
+    .tp-empty-description {
+        max-width: 360px;
+        margin: 8px auto 18px;
+        color: var(--tp-muted);
+        font-size: .82rem;
+        line-height: 1.65;
+    }
+
+    .tp-pagination {
+        gap: 5px;
+    }
+
+    .tp-pagination .page-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 36px;
+        min-height: 36px;
+        border: 1px solid #e8eaf2;
+        border-radius: 9px !important;
+        color: #424862;
+        background: white;
+        font-size: .8rem;
+        font-weight: 600;
+    }
+
+    .tp-pagination .page-item.active .page-link {
+        color: white;
+        background: var(--tp-primary);
+        border-color: var(--tp-primary);
+    }
+
+    .tp-pagination .page-item.disabled .page-link {
+        color: #b2b6c5;
+        background: #f8f9fc;
+    }
+
+    .tp-pagination .page-link:hover {
+        color: var(--tp-primary);
+        background: #eef2ff;
+    }
+
+    @media (max-width: 767.98px) {
+        .task-page-header {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .task-page-header .tp-primary-btn {
+            width: 100%;
+        }
+
+        .tp-filter-header,
+        .tp-filter-body,
+        .tp-table-header {
+            padding: 16px;
+        }
+
+        .tp-summary-card {
+            padding: 15px;
+        }
+
+        .tp-summary-value {
+            font-size: 1.65rem;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .task-page,
+        .task-page * {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+</style>
+
+<div class="task-page container py-4">
+
+    <!-- Page header -->
+    <div class="task-page-header">
+        <div>
+            <div class="d-flex align-items-center gap-2 mb-2">
+                <span class="text-primary">
+                    <i class="bi bi-grid-1x2-fill"></i>
+                </span>
+                <span class="text-muted small fw-semibold">
+                    RUANG PRODUKTIVITAS
+                </span>
+            </div>
+
+            <h1 class="task-page-title">Daftar Tugas</h1>
+
+            <p class="task-page-subtitle">
+                Kelola tugas, periksa prioritas, dan pantau tenggat
+                waktu dalam satu tempat.
+            </p>
+        </div>
+
+        <a href="/tasks/new" class="tp-primary-btn align-self-md-center">
+            <i class="bi bi-plus-lg"></i>
+            Tambah tugas
+        </a>
+    </div>
+
+    <!-- Summary cards -->
+    <%
+        const taskList = Array.isArray(tasks) ? tasks : [];
+
+        const summary = [
+            {
+                label: 'Total hasil',
+                value: taskList.length,
+                icon: 'bi-collection',
+                iconClass: 'tp-icon-total',
+                note: 'Pada halaman ini'
+            },
+            {
+                label: 'Belum dikerjakan',
+                value: taskList.filter(t => t.status === 'belum').length,
+                icon: 'bi-hourglass',
+                iconClass: 'tp-icon-open',
+                note: 'Status belum'
+            },
+            {
+                label: 'Sedang dikerjakan',
+                value: taskList.filter(t => t.status === 'proses').length,
+                icon: 'bi-arrow-repeat',
+                iconClass: 'tp-icon-progress',
+                note: 'Status proses'
+            },
+            {
+                label: 'Sudah selesai',
+                value: taskList.filter(t => t.status === 'selesai').length,
+                icon: 'bi-check2-circle',
+                iconClass: 'tp-icon-done',
+                note: 'Status selesai'
+            }
+        ];
+    %>
+
+    <div class="row g-3 mb-4">
+        <% summary.forEach(function(item) { %>
+            <div class="col-6 col-lg-3">
+                <div class="tp-summary-card">
+                    <div class="tp-summary-top">
+                        <span class="tp-summary-icon <%= item.iconClass %>">
+                            <i class="bi <%= item.icon %>"></i>
+                        </span>
+                    </div>
+
+                    <div class="tp-summary-label"><%= item.label %></div>
+                    <div class="tp-summary-value"><%= item.value %></div>
+                    <div class="tp-summary-note"><%= item.note %></div>
+                </div>
+            </div>
+        <% }); %>
+    </div>
+
+    <!-- Search and filters -->
+    <section class="tp-panel mb-4">
+        <div class="tp-filter-header">
+            <h2 class="tp-section-title">
+                <i class="bi bi-sliders2 me-2 text-primary"></i>
+                Cari dan filter tugas
+            </h2>
+            <p class="tp-section-description">
+                Gunakan kata kunci dan status untuk mempersempit hasil.
+            </p>
+        </div>
+
+        <div class="tp-filter-body">
+            <form method="GET" action="/tasks" class="row g-3 align-items-end">
+                <div class="col-12 col-md-6">
+                    <label for="task-search" class="tp-input-label">
+                        Kata kunci
+                    </label>
+
+                    <div class="input-group">
+                        <span class="input-group-text tp-input border-end-0">
+                            <i class="bi bi-search text-muted"></i>
+                        </span>
+
+                        <input
+                            id="task-search"
+                            class="form-control tp-input border-start-0"
+                            name="q"
+                            type="search"
+                            placeholder="Cari judul atau mata pelajaran..."
+                            value="<%= qs || '' %>"
+                        >
+                    </div>
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label for="task-status" class="tp-input-label">
+                        Status tugas
+                    </label>
+
+                    <select id="task-status" class="form-select tp-select" name="status">
+                        <option value="">Semua status</option>
+
+                        <% ['belum', 'proses', 'selesai'].forEach(function(status) { %>
+                            <option
+                                value="<%= status %>"
+                                <%= st === status ? 'selected' : '' %>
+                            >
+                                <%= status === 'belum'
+                                    ? 'Belum dikerjakan'
+                                    : status === 'proses'
+                                        ? 'Sedang dikerjakan'
+                                        : 'Selesai' %>
+                            </option>
+                        <% }); %>
+                    </select>
+                </div>
+
+                <div class="col-6 col-md-1">
+                    <button type="submit" class="btn btn-primary tp-filter-submit w-100">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+
+                <div class="col-6 col-md-1">
+                    <a href="/tasks"
+                       class="btn btn-outline-secondary tp-filter-submit w-100 d-flex align-items-center justify-content-center"
+                       title="Reset filter">
+                        <i class="bi bi-arrow-counterclockwise"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Task table -->
+    <section class="tp-panel">
+        <div class="tp-table-header">
+            <div>
+                <h2 class="tp-section-title mb-1">Semua tugas</h2>
+                <p class="tp-section-description">
+                    Informasi deadline, prioritas, dan status tugas.
+                </p>
+            </div>
+
+            <span class="tp-result-count">
+                <i class="bi bi-list-check"></i>
+                <%= taskList.length %> hasil
+            </span>
+        </div>
+
+        <% if (taskList.length) { %>
+            <div class="table-responsive">
+                <table class="table tp-table">
+                    <thead>
+                        <tr>
+                            <th style="padding-left: 22px;">Tugas</th>
+                            <th>Deadline</th>
+                            <th>Prioritas</th>
+                            <th>Status</th>
+                            <th class="text-center">Detail</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        <% taskList.forEach(function(t) {
+                            const priority = String(t.priority || '').toLowerCase();
+                            const status = String(t.status || '').toLowerCase();
+
+                            const priorityClass =
+                                priority === 'tinggi' ? 'tp-priority-high' :
+                                priority === 'sedang' ? 'tp-priority-medium' :
+                                priority === 'rendah' ? 'tp-priority-low' :
+                                'tp-status-default';
+
+                            const statusClass =
+                                status === 'belum' ? 'tp-status-open' :
+                                status === 'proses' ? 'tp-status-progress' :
+                                status === 'selesai' ? 'tp-status-done' :
+                                'tp-status-default';
+
+                            const statusLabel =
+                                status === 'belum' ? 'Belum dikerjakan' :
+                                status === 'proses' ? 'Sedang dikerjakan' :
+                                status === 'selesai' ? 'Selesai' :
+                                (t.status || 'Tidak diketahui');
+
+                            const priorityLabel = t.priority
+                                ? priority.charAt(0).toUpperCase() + priority.slice(1)
+                                : 'Tidak diatur';
+                        %>
+                            <tr>
+                                <td style="padding-left: 22px;">
+                                    <div class="tp-task-cell">
+                                        <div class="tp-task-icon">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </div>
+
+                                        <div class="min-w-0">
+                                            <a href="/tasks/<%= t.id %>"
+                                               class="tp-task-name">
+                                                <%= t.title %>
+                                            </a>
+
+                                            <div class="tp-task-subject">
+                                                <i class="bi bi-journal-bookmark me-1"></i>
+                                                <%= t.subject || 'Tanpa mata pelajaran' %>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+
+                                <td>
+                                    <div class="tp-deadline-date">
+                                        <i class="bi bi-calendar3 me-1 text-muted"></i>
+                                        <%= t.deadline || 'Belum ditentukan' %>
+                                    </div>
+
+                                    <% if (t.late && status !== 'selesai') { %>
+                                        <span class="tp-late">
+                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                            Terlambat
+                                        </span>
+                                    <% } else if (status === 'selesai') { %>
+                                        <div class="tp-deadline-caption">
+                                            <i class="bi bi-check-circle me-1"></i>
+                                            Tugas selesai
+                                        </div>
+                                    <% } else { %>
+                                        <div class="tp-deadline-caption">
+                                            Batas pengumpulan
+                                        </div>
+                                    <% } %>
+                                </td>
+
+                                <td>
+                                    <span class="tp-badge <%= priorityClass %>">
+                                        <i class="bi <%= priority === 'tinggi'
+                                            ? 'bi-flag-fill'
+                                            : priority === 'sedang'
+                                                ? 'bi-flag'
+                                                : 'bi-flag' %>"></i>
+                                        <%= priorityLabel %>
+                                    </span>
+                                </td>
+
+                                <td>
+                                    <span class="tp-badge <%= statusClass %>">
+                                        <i class="bi <%= status === 'selesai'
+                                            ? 'bi-check-circle-fill'
+                                            : status === 'proses'
+                                                ? 'bi-arrow-repeat'
+                                                : 'bi-clock' %>"></i>
+                                        <%= statusLabel %>
+                                    </span>
+                                </td>
+
+                                <td class="text-center">
+                                    <a href="/tasks/<%= t.id %>"
+                                       class="tp-row-action"
+                                       title="Lihat detail tugas"
+                                       aria-label="Lihat detail tugas">
+                                        <i class="bi bi-arrow-up-right"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        <% }); %>
+                    </tbody>
+                </table>
+            </div>
+        <% } else { %>
+            <div class="tp-empty">
+                <div class="tp-empty-icon">
+                    <i class="bi bi-folder2-open"></i>
+                </div>
+
+                <h3 class="tp-empty-title">Belum ada tugas ditemukan</h3>
+
+                <p class="tp-empty-description">
+                    Coba ubah kata kunci atau status filter. Jika belum
+                    memiliki tugas, tambahkan tugas baru agar aktivitas
+                    Anda lebih mudah terorganisir.
+                </p>
+
+                <a href="/tasks/new" class="tp-primary-btn">
+                    <i class="bi bi-plus-lg"></i>
+                    Buat tugas baru
+                </a>
+            </div>
+        <% } %>
+    </section>
+
+    <!-- Pagination -->
+    <% if (pages > 1) { %>
+        <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3 mt-4">
+            <p class="text-muted small mb-0">
+                Halaman <strong><%= page %></strong> dari
+                <strong><%= pages %></strong>
+            </p>
+
+            <nav aria-label="Navigasi halaman tugas">
+                <ul class="pagination tp-pagination mb-0">
+                    <li class="page-item <%= page <= 1 ? 'disabled' : '' %>">
+                        <a class="page-link"
+                           href="?page=<%= Math.max(1, page - 1) %>&q=<%= encodeURIComponent(qs || '') %>&status=<%= encodeURIComponent(st || '') %>"
+                           aria-label="Halaman sebelumnya">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+
+                    <% for (let i = 1; i <= pages; i++) { %>
+                        <li class="page-item <%= i === page ? 'active' : '' %>">
+                            <a class="page-link"
+                               href="?page=<%= i %>&q=<%= encodeURIComponent(qs || '') %>&status=<%= encodeURIComponent(st || '') %>">
+                                <%= i %>
+                            </a>
+                        </li>
+                    <% } %>
+
+                    <li class="page-item <%= page >= pages ? 'disabled' : '' %>">
+                        <a class="page-link"
+                           href="?page=<%= Math.min(pages, page + 1) %>&q=<%= encodeURIComponent(qs || '') %>&status=<%= encodeURIComponent(st || '') %>"
+                           aria-label="Halaman berikutnya">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+    <% } %>
+
+    <div class="text-center mt-4">
+        <span class="text-muted small">
+            <i class="bi bi-shield-check me-1"></i>
+            Data tugas ditampilkan sesuai hasil filter yang aktif.
+        </span>
+    </div>
+</div>
+
+<%- include('partials/foot') %>

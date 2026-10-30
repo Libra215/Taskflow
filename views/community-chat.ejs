@@ -1,0 +1,693 @@
+
+<%- include('partials/head', { title: 'TaskFlow Community' }) %>
+
+<style>
+    :root {
+        --community-primary: #5b5ce2;
+        --community-primary-dark: #4647c9;
+        --community-bg: #f3f5fb;
+        --community-border: #e8eaf2;
+        --community-muted: #8790a5;
+        --community-text: #22283a;
+    }
+
+    .community-page {
+        min-height: calc(100vh - 80px);
+        padding: 28px 18px;
+        background:
+            radial-gradient(circle at 10% 0%, rgba(99,102,241,.08), transparent 28%),
+            var(--community-bg);
+    }
+
+    .community-shell {
+        width: 100%;
+        max-width: 1120px;
+        height: min(790px, calc(100vh - 125px));
+        min-height: 520px;
+        margin: 0 auto;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        border: 1px solid rgba(226,232,240,.9);
+        border-radius: 24px;
+        background: #fff;
+        box-shadow: 0 18px 55px rgba(35,43,90,.09);
+    }
+
+    /* Header */
+    .community-header {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 18px;
+        padding: 21px 26px;
+        color: #fff;
+        background: linear-gradient(120deg, #4546c9 0%, #6366f1 58%, #818cf8 100%);
+    }
+
+    .community-brand {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .community-brand-icon {
+        width: 49px;
+        height: 49px;
+        flex: 0 0 49px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255,255,255,.24);
+        border-radius: 16px;
+        background: rgba(255,255,255,.15);
+        font-size: 23px;
+        box-shadow: inset 0 1px rgba(255,255,255,.12);
+    }
+
+    .community-header h1 {
+        margin: 0;
+        color: #fff;
+        font-size: 21px;
+        font-weight: 800;
+        letter-spacing: -.4px;
+    }
+
+    .community-header p {
+        margin: 5px 0 0;
+        color: rgba(255,255,255,.8);
+        font-size: 12px;
+        line-height: 1.5;
+    }
+
+    .community-header-status {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 8px;
+        flex-shrink: 0;
+    }
+
+    .community-status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 7px 11px;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 30px;
+        color: #fff;
+        background: rgba(255,255,255,.12);
+        font-size: 11px;
+        font-weight: 600;
+    }
+
+    .community-status-dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #fbbf24;
+        box-shadow: 0 0 0 3px rgba(255,255,255,.12);
+    }
+
+    .community-online {
+        color: rgba(255,255,255,.82);
+        font-size: 11px;
+    }
+
+    /* Area percakapan */
+    .community-messages {
+        flex: 1;
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 26px clamp(14px, 4vw, 42px);
+        background-color: #f8f9fd;
+        background-image: radial-gradient(rgba(99,102,241,.045) .8px, transparent .8px);
+        background-size: 18px 18px;
+        scroll-behavior: smooth;
+    }
+
+    .community-messages::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .community-messages::-webkit-scrollbar-thumb {
+        border-radius: 10px;
+        background: #d8dcec;
+    }
+
+    .community-messages::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #communityLoading {
+        margin: 35px auto;
+        color: var(--community-muted);
+        font-size: 13px;
+        text-align: center;
+    }
+
+    /* Bubble pesan */
+    .community-message {
+        position: relative;
+        width: fit-content;
+        max-width: min(78%, 700px);
+        margin: 0 auto 15px 0;
+        padding: 12px 15px 10px;
+        border: 1px solid #e7eaf2;
+        border-radius: 5px 18px 18px 18px;
+        background: #fff;
+        color: var(--community-text);
+        box-shadow: 0 3px 10px rgba(25,35,75,.035);
+        overflow-wrap: anywhere;
+        animation: communityMessageIn .18s ease-out;
+    }
+
+    /* Pesan milik pengguna yang sedang login: sebelah kanan */
+    .community-message.own-message {
+        margin: 0 0 15px auto;
+        border-color: transparent;
+        border-radius: 18px 5px 18px 18px;
+        background: linear-gradient(135deg, #6264eb, #5355d9);
+        color: #fff;
+        box-shadow: 0 4px 12px rgba(83,85,217,.13);
+    }
+
+    .community-message-meta {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 7px;
+        color: #8b93a7;
+        font-size: 11px;
+    }
+
+    .community-message-author {
+        color: #5357bc;
+        font-size: 12px;
+        font-weight: 800;
+    }
+
+    .community-message.own-message .community-message-meta {
+        color: rgba(255,255,255,.76);
+    }
+
+    .community-message.own-message .community-message-author {
+        color: #fff;
+    }
+
+    .community-message-text {
+        margin: 0;
+        color: inherit;
+        font-size: 13.5px;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        word-break: break-word;
+    }
+
+    .community-message.own-message .community-message-text {
+        color: #fff;
+    }
+
+    .community-message-time {
+        margin-left: 8px;
+        color: #9299ab;
+        font-size: 10px;
+        text-align: right;
+    }
+
+    .community-message.own-message .community-message-time {
+        color: rgba(255,255,255,.72);
+    }
+
+    .community-message-edited {
+        font-size: 10px;
+        font-style: italic;
+        opacity: .8;
+    }
+
+    /* Tombol tindakan pesan */
+    .community-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    .community-actions button {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 5px 9px;
+        border: 1px solid #e7e9f2;
+        border-radius: 8px;
+        color: #626b80;
+        background: #fff;
+        font-size: 10px;
+        transition: background .15s, color .15s;
+    }
+
+    .community-actions button:hover {
+        color: var(--community-primary);
+        background: #f0f0ff;
+    }
+
+    .community-message.own-message .community-actions button {
+        border-color: rgba(255,255,255,.28);
+        color: #fff;
+        background: rgba(255,255,255,.12);
+    }
+
+    .community-message.own-message .community-actions button:hover {
+        background: rgba(255,255,255,.23);
+    }
+
+    .community-message.own-message .community-actions {
+        justify-content: flex-end;
+    }
+
+    /* Indikator balasan */
+    .community-reply {
+        display: none;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 20px;
+        border-top: 1px solid #e8eaf5;
+        color: #4c4dc2;
+        background: #f4f4ff;
+        font-size: 12px;
+    }
+
+    .community-reply-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .community-reply-title {
+        display: block;
+        margin-bottom: 3px;
+        font-weight: 800;
+    }
+
+    #communityReplyText {
+        display: block;
+        overflow: hidden;
+        color: #747b91;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    #communityCancelReply {
+        flex-shrink: 0;
+        color: #5556ce;
+        text-decoration: none;
+    }
+
+    /* Form kirim pesan */
+    .community-compose {
+        padding: 17px 22px 13px;
+        border-top: 1px solid #eceef5;
+        background: #fff;
+    }
+
+    .community-compose-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 9px;
+        color: #505970;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .community-input-wrap {
+        display: flex;
+        align-items: flex-end;
+        gap: 10px;
+        padding: 7px;
+        border: 1px solid #e4e7f0;
+        border-radius: 17px;
+        background: #f8f9fc;
+        transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+
+    .community-input-wrap:focus-within {
+        border-color: #a5a6f5;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99,102,241,.08);
+    }
+
+    .community-compose textarea {
+        flex: 1;
+        min-width: 0;
+        min-height: 43px;
+        max-height: 125px;
+        padding: 11px 12px;
+        resize: vertical;
+        border: 0;
+        outline: 0;
+        box-shadow: none !important;
+        background: transparent;
+        color: #252b40;
+        font-size: 13px;
+        line-height: 1.55;
+    }
+
+    .community-compose textarea:focus {
+        background: transparent;
+    }
+
+    .community-compose textarea::placeholder {
+        color: #a0a6b7;
+    }
+
+    #communitySend {
+        width: 44px;
+        height: 44px;
+        flex: 0 0 44px;
+        display: grid;
+        place-items: center;
+        border: 0;
+        border-radius: 13px;
+        color: #fff;
+        background: linear-gradient(135deg, #6264eb, #4f51d3);
+        box-shadow: 0 4px 10px rgba(83,85,217,.22);
+        transition: transform .15s, box-shadow .15s;
+    }
+
+    #communitySend:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 15px rgba(83,85,217,.3);
+    }
+
+    #communitySend:disabled {
+        cursor: not-allowed;
+        opacity: .55;
+        transform: none;
+    }
+
+    .community-compose-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        min-height: 24px;
+        margin-top: 5px;
+    }
+
+    #communityFeedback {
+        font-size: 11px;
+    }
+
+    .community-note {
+        color: #9ba2b3;
+        font-size: 10px;
+        text-align: right;
+    }
+
+    .community-security-note {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+        padding-top: 7px;
+        color: #a0a6b5;
+        font-size: 10px;
+    }
+
+    @keyframes communityMessageIn {
+        from {
+            opacity: 0;
+            transform: translateY(5px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .community-page {
+            padding: 14px 10px;
+        }
+
+        .community-shell {
+            height: calc(100dvh - 105px);
+            min-height: 460px;
+            border-radius: 19px;
+        }
+
+        .community-header {
+            padding: 17px;
+        }
+
+        .community-brand {
+            gap: 10px;
+        }
+
+        .community-brand-icon {
+            width: 42px;
+            height: 42px;
+            flex-basis: 42px;
+            border-radius: 13px;
+            font-size: 20px;
+        }
+
+        .community-header h1 {
+            font-size: 17px;
+        }
+
+        .community-header p {
+            max-width: 230px;
+            font-size: 10px;
+        }
+
+        .community-status-pill {
+            padding: 6px 8px;
+            font-size: 10px;
+        }
+
+        .community-online {
+            font-size: 10px;
+        }
+
+        .community-messages {
+            padding: 19px 12px;
+        }
+
+        .community-message {
+            max-width: 88%;
+            padding: 10px 12px 9px;
+        }
+
+        .community-message-text {
+            font-size: 13px;
+        }
+
+        .community-compose {
+            padding: 13px 12px 10px;
+        }
+
+        .community-compose textarea {
+            font-size: 13px;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .community-page {
+            padding: 8px 5px;
+        }
+
+        .community-shell {
+            height: calc(100dvh - 85px);
+            min-height: 400px;
+            border-radius: 15px;
+        }
+
+        .community-header {
+            gap: 8px;
+            padding: 14px 11px;
+        }
+
+        .community-brand {
+            gap: 8px;
+        }
+
+        .community-brand-icon {
+            width: 36px;
+            height: 36px;
+            flex-basis: 36px;
+            border-radius: 11px;
+            font-size: 17px;
+        }
+
+        .community-header h1 {
+            font-size: 14px;
+        }
+
+        .community-header p {
+            max-width: 175px;
+            font-size: 9px;
+        }
+
+        .community-header-status {
+            gap: 6px;
+        }
+
+        .community-status-pill {
+            gap: 5px;
+            padding: 5px 7px;
+            font-size: 9px;
+        }
+
+        .community-online {
+            font-size: 9px;
+        }
+
+        .community-messages {
+            padding: 14px 9px;
+        }
+
+        .community-message {
+            max-width: 92%;
+        }
+
+        .community-compose-label {
+            font-size: 10px;
+        }
+
+        .community-note {
+            max-width: 120px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .community-message {
+            animation: none;
+        }
+
+        .community-messages {
+            scroll-behavior: auto;
+        }
+
+        #communitySend {
+            transition: none;
+        }
+    }
+</style>
+
+<div class="community-page">
+    <main
+        class="community-shell"
+        id="communityChat"
+        data-user-id="<%= user.id %>"
+    >
+        <header class="community-header">
+            <div class="community-brand">
+                <div class="community-brand-icon">
+                    <i class="bi bi-chat-square-dots-fill"></i>
+                </div>
+
+                <div>
+                    <h1>TaskFlow Community</h1>
+                    <p>Tempat berbagi ide, bertanya, dan berdiskusi bersama.</p>
+                </div>
+            </div>
+
+            <div class="community-header-status">
+                <div class="community-status-pill">
+                    <span class="community-status-dot"></span>
+                    <span id="communityConnection">Menghubungkan...</span>
+                </div>
+
+                <div class="community-online">
+                    <i class="bi bi-people-fill me-1"></i>
+                    <span id="communityOnline">0</span> pengguna online
+                </div>
+            </div>
+        </header>
+
+        <div
+            id="communityMessages"
+            class="community-messages"
+            aria-live="polite"
+            aria-label="Riwayat diskusi"
+            aria-busy="true"
+        >
+            <p id="communityLoading">
+                <span class="spinner-border spinner-border-sm me-2" role="status"></span>
+                Memuat percakapan...
+            </p>
+        </div>
+
+        <div id="communityReply" class="community-reply">
+            <i class="bi bi-reply-fill fs-5"></i>
+
+            <div class="community-reply-content">
+                <span class="community-reply-title">Membalas pesan</span>
+                <span id="communityReplyText"></span>
+            </div>
+
+            <button
+                type="button"
+                id="communityCancelReply"
+                class="btn btn-sm btn-link p-0"
+                aria-label="Batalkan balasan"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form id="communityForm" class="community-compose">
+            <div class="community-compose-label">
+                <label for="communityInput" class="mb-0">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Tulis pesan
+                </label>
+                <span>Diskusi publik</span>
+            </div>
+
+            <div class="community-input-wrap">
+                <textarea
+                    id="communityInput"
+                    class="form-control"
+                    maxlength="2000"
+                    rows="2"
+                    placeholder="Tulis pesan atau bagikan ide kamu..."
+                    aria-label="Tulis pesan"
+                    required
+                ></textarea>
+
+                <button
+                    id="communitySend"
+                    type="submit"
+                    aria-label="Kirim pesan"
+                    title="Kirim pesan"
+                >
+                    <i class="bi bi-send-fill"></i>
+                </button>
+            </div>
+
+            <div class="community-compose-footer">
+                <span id="communityFeedback" class="text-muted" role="status"></span>
+                <span class="community-note">
+                    Enter untuk baris baru · Maks. 2000 karakter
+                </span>
+            </div>
+
+            <div class="community-security-note">
+                <i class="bi bi-shield-check"></i>
+                Jaga sopan santun dan jangan bagikan informasi pribadi.
+            </div>
+        </form>
+    </main>
+</div>
+
+<script src="/js/socket.io.min.js" defer></script>
+<script src="/js/community-chat.js" defer></script>
+
+<%- include('partials/foot') %>

@@ -1,0 +1,1673 @@
+const r = require('express').Router(),
+      bcrypt = require('bcrypt'),
+      { z } = require('zod'),
+      multer = require('multer'),
+      path = require('path'),
+      fs = require('fs'),
+      crypto = require('crypto'),
+      rateLimit = require('express-rate-limit');
+
+const { q } = require('./db');
+const { normalizeReminderPrefs, buildReminderSummary } = require('./reminders');
+const { sendWhatsApp, normalizePhone } = require('./whatsapp');
+
+// Konfigurasi Umum & Direktori Upload
+const UP = path.join(__dirname, '../storage/uploads');
+const MAX = (+process.env.UPLOAD_MAX_SIZE_MB || 10) * 1024 * 1024;
+
+// Middleware Keamanan & Autentikasi
+const auth = (req, res, next) => req.session.user ? next() : res.redirect('/login');
+const admin = (req, res, next) => req.session.user?.role === 'admin' ? next() : res.status(403).render('error', { code: 403, msg: 'Akses ditolak' });
+const flash = (req, t, m) => req.session.flash = { t, m };
+const audit = (req, a, d) => q('INSERT INTO audit_logs(actor_id,action,detail,ip) VALUES(?,?,?,?)', [req.session.user?.id || null, a, String(d || '').slice(0, 255), req.ip]).catch(() => {});
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 20, standardHeaders: true, legacyHeaders: false });
+const wrap = f => (a, b, c) => f(a, b, c).catch(c);
+const login = (req, u) => new Promise((ok, no) => req.session.regenerate(e => { if (e) return no(e); req.session.user = { id: u.id, name: u.name, role: u.role }; ok(); }));
+const back = (req, res) => res.redirect(req.get('referer') || '/');
+
+
+const otpLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 8,
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+function takeFlash(req) {
+    const value = req.session.flash || null;
+    delete req.session.flash;
+    return value;
+}
+
+function otpHash(id, code) {
+    const pepper = process.env.OTP_PEPPER;
+
+    if (!pepper || pepper.length < 32) {
+        throw new Error('OTP_PEPPER belum dikonfigurasi dengan benar');
+    }
+
+    return crypto
+        .createHmac('sha256', pepper)
+        .update(`${id}:${code}`)
+        .digest('hex');
+}
+
+function safeEqual(a, b) {
+    if (typeof a !== 'string' || typeof b !== 'string') {
+        return false;
+    }
+
+    const left = Buffer.from(a);
+    const right = Buffer.from(b);
+
+    return left.length === right.length &&
+        crypto.timingSafeEqual(left, right);
+}
+
+function maskPhone(phone) {
+    const value = String(phone || '');
+
+    if (value.length < 7) return value;
+
+    return value.slice(0, 4) +
+        '*'.repeat(Math.max(0, value.length - 8)) +
+        value.slice(-4);
+}
+
+
+// ==========================================
+// 1. RUTE PUBLIK & AUTENTIKASI
+// ==========================================
+r.get('/', (req, res) => res.render('landing'));
+r.get('/privacy', (req, res) => res.render('privacy'));
+r.get('/login', (req, res) => res.render('login'));
+
+r.post('/login', limiter, wrap(async (req, res) => {
+    const [u] = await q('SELECT * FROM users WHERE email=?', [String(req.body.email || '').toLowerCase()]);
+    const ok = u && await bcrypt.compare(String(req.body.password || ''), u.password_hash);
+    if (!ok || !u.is_active) { 
+        flash(req, 'danger', 'Email/password salah atau akun nonaktif'); 
+        return res.redirect('/login'); 
+    }
+    await login(req, u);
+    if (u.role === 'admin') audit(req, 'admin_login', u.email);
+    res.redirect(u.role === 'admin' ? '/admin' : '/dashboard');
+}));
+
+r.get('/docs', auth, admin, wrap(async (req, res) => {
+    res.render('api_docs');
+}));
+
+
+
+/* =========================================
+   REGISTRASI DENGAN OTP WHATSAPP
+========================================= */
+
+r.get('/register', (req, res) => {
+    req.session.registerCsrf = crypto.randomBytes(32).toString('hex');
+
+    res.render('register', {
+        flash: takeFlash(req),
+        csrfToken: req.session.registerCsrf
+    });
+});
+
+
+/* Tahap 1: validasi formulir, simpan data sementara, kirim OTP */
+r.post('/register', limiter, otpLimiter, wrap(async (req, res) => {
+    if (!safeEqual(
+        String(req.body._csrf || ''),
+        String(req.session.registerCsrf || '')
+    )) {
+        flash(req, 'danger', 'Sesi formulir tidak valid. Silakan coba lagi.');
+        return res.redirect('/register');
+    }
+
+    delete req.session.registerCsrf;
+
+    const schema = z.object({
+        name: z.string().trim().min(2).max(100),
+        email: z.string().trim().toLowerCase().email().max(190),
+        password: z.string().min(8).max(72),
+        whatsapp: z.string().trim().min(8).max(25),
+        user_type: z.enum(['mahasiswa', 'siswa']),
+        institution: z.string().trim().max(150).optional()
+    });
+
+    const parsed = schema.safeParse(req.body);
+
+    if (!parsed.success) {
+        flash(
+            req,
+            'danger',
+            'Data tidak valid. Periksa kembali formulir dan password minimal 8 karakter.'
+        );
+        return res.redirect('/register');
+    }
+
+    const d = parsed.data;
+
+    let phone;
+
+    try {
+        phone = normalizePhone(d.whatsapp);
+    } catch {
+        flash(
+            req,
+            'danger',
+            'Format nomor WhatsApp tidak valid. Contoh: 081234567890.'
+        );
+        return res.redirect('/register');
+    }
+
+    if (!process.env.OTP_PEPPER || process.env.OTP_PEPPER.length < 32) {
+        flash(req, 'danger', 'Konfigurasi keamanan OTP belum tersedia.');
+        return res.redirect('/register');
+    }
+
+    // Pastikan email dan nomor belum digunakan.
+    const [existing] = await q(
+        `SELECT id
+         FROM users
+         WHERE email = ? OR whatsapp = ?
+         LIMIT 1`,
+        [d.email, phone]
+    );
+
+    if (existing) {
+        flash(
+            req,
+            'danger',
+            'Email atau nomor WhatsApp sudah digunakan.'
+        );
+        return res.redirect('/register');
+    }
+
+    // Hapus data registrasi sementara yang sudah kedaluwarsa.
+    await q(
+        'DELETE FROM pending_registrations WHERE expires_at <= NOW()'
+    );
+
+    // Hapus proses registrasi lama untuk email/nomor yang sama.
+    await q(
+        `DELETE FROM pending_registrations
+         WHERE email = ? OR whatsapp = ?`,
+        [d.email, phone]
+    );
+
+    const id = crypto.randomUUID();
+    const code = String(
+        crypto.randomInt(0, 1000000)
+    ).padStart(6, '0');
+
+    const passwordHash = await bcrypt.hash(d.password, 12);
+    const hashedOtp = otpHash(id, code);
+
+    await q(
+        `INSERT INTO pending_registrations
+            (
+                id, name, email, password_hash,
+                user_type, institution, whatsapp,
+                otp_hash, attempts, expires_at, last_sent_at
+            )
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0,
+                 DATE_ADD(NOW(), INTERVAL 5 MINUTE), NOW())`,
+        [
+            id,
+            d.name,
+            d.email,
+            passwordHash,
+            d.user_type,
+            d.institution || null,
+            phone,
+            hashedOtp
+        ]
+    );
+
+    req.session.pendingRegistrationId = id;
+
+    const message =
+        `🔐 *Kode OTP TaskFlow*\n\n` +
+        `Kode verifikasi kamu: *${code}*\n\n` +
+        `Kode berlaku selama 5 menit dan hanya dapat digunakan sekali.\n` +
+        `Jangan bagikan kode ini kepada siapa pun.\n\n` +
+        `Jika kamu tidak melakukan registrasi, abaikan pesan ini.`;
+
+    try {
+        const result = await sendWhatsApp(phone, message);
+
+        if (!['SUCCESS', 'PENDING'].includes(result.status)) {
+            throw new Error('Sidobe melaporkan pengiriman OTP gagal.');
+        }
+
+        flash(
+            req,
+            result.status === 'SUCCESS' ? 'success' : 'warning',
+            result.status === 'SUCCESS'
+                ? 'OTP telah dikirim. Periksa WhatsApp kamu.'
+                : 'Permintaan OTP sedang diproses. Periksa WhatsApp kamu.'
+        );
+
+        return res.redirect('/register/verify');
+    } catch (error) {
+        console.error('[OTP] Pengiriman gagal:', error.message);
+
+        // Timeout/koneksi terputus berarti pesan mungkin sudah terkirim.
+        // Pertahankan OTP agar tidak langsung membuat kode berbeda.
+        if (error.uncertain === true) {
+            flash(
+                req,
+                'warning',
+                'Status pengiriman belum diketahui. Periksa WhatsApp sebelum meminta kode baru.'
+            );
+
+            return res.redirect('/register/verify');
+        }
+
+        await q(
+            'DELETE FROM pending_registrations WHERE id = ?',
+            [id]
+        );
+
+        delete req.session.pendingRegistrationId;
+
+        flash(
+            req,
+            'danger',
+            'OTP gagal dikirim. Silakan periksa nomor WhatsApp dan coba lagi.'
+        );
+
+        return res.redirect('/register');
+    }
+}));
+
+
+/* Tahap 2: halaman memasukkan OTP */
+r.get('/register/verify', wrap(async (req, res) => {
+    const id = req.session.pendingRegistrationId;
+
+    if (!id) {
+        flash(req, 'danger', 'Silakan mulai registrasi terlebih dahulu.');
+        return res.redirect('/register');
+    }
+
+    const [pending] = await q(
+        `SELECT id, whatsapp, expires_at,
+                (expires_at <= NOW()) AS expired
+         FROM pending_registrations
+         WHERE id = ?`,
+        [id]
+    );
+
+    if (!pending) {
+        delete req.session.pendingRegistrationId;
+        flash(req, 'danger', 'Data registrasi tidak ditemukan. Silakan ulangi.');
+        return res.redirect('/register');
+    }
+
+    if (Number(pending.expired) === 1) {
+        await q('DELETE FROM pending_registrations WHERE id = ?', [id]);
+        delete req.session.pendingRegistrationId;
+
+        flash(req, 'danger', 'OTP sudah kedaluwarsa. Silakan registrasi ulang.');
+        return res.redirect('/register');
+    }
+
+    req.session.verifyCsrf = crypto.randomBytes(32).toString('hex');
+
+    res.render('register_verify', {
+        flash: takeFlash(req),
+        csrfToken: req.session.verifyCsrf,
+        whatsapp: maskPhone(pending.whatsapp)
+    });
+}));
+
+
+/* Tahap 3: verifikasi kode dan baru membuat akun */
+r.post('/register/verify', otpLimiter, wrap(async (req, res) => {
+    if (!safeEqual(
+        String(req.body._csrf || ''),
+        String(req.session.verifyCsrf || '')
+    )) {
+        flash(req, 'danger', 'Sesi verifikasi tidak valid. Muat ulang halaman.');
+        return res.redirect('/register/verify');
+    }
+
+    delete req.session.verifyCsrf;
+
+    const id = req.session.pendingRegistrationId;
+
+    if (!id) {
+        flash(req, 'danger', 'Sesi registrasi berakhir. Silakan mulai lagi.');
+        return res.redirect('/register');
+    }
+
+    const code = String(req.body.otp || '').trim();
+
+    if (!/^\d{6}$/.test(code)) {
+        flash(req, 'danger', 'Masukkan kode OTP 6 digit.');
+        return res.redirect('/register/verify');
+    }
+
+    const [pending] = await q(
+        `SELECT *
+         FROM pending_registrations
+         WHERE id = ? AND expires_at > NOW()`,
+        [id]
+    );
+
+    if (!pending) {
+        await q('DELETE FROM pending_registrations WHERE id = ?', [id]);
+        delete req.session.pendingRegistrationId;
+
+        flash(req, 'danger', 'OTP sudah kedaluwarsa. Silakan registrasi ulang.');
+        return res.redirect('/register');
+    }
+
+    if (Number(pending.attempts) >= 5) {
+        await q('DELETE FROM pending_registrations WHERE id = ?', [id]);
+        delete req.session.pendingRegistrationId;
+
+        flash(req, 'danger', 'Batas percobaan OTP tercapai. Silakan registrasi ulang.');
+        return res.redirect('/register');
+    }
+
+    const submittedHash = otpHash(id, code);
+
+    if (!safeEqual(submittedHash, pending.otp_hash)) {
+        const nextAttempts = Number(pending.attempts) + 1;
+
+        if (nextAttempts >= 5) {
+            await q('DELETE FROM pending_registrations WHERE id = ?', [id]);
+            delete req.session.pendingRegistrationId;
+
+            flash(req, 'danger', 'Batas percobaan OTP tercapai. Silakan registrasi ulang.');
+            return res.redirect('/register');
+        }
+
+        await q(
+            'UPDATE pending_registrations SET attempts = ? WHERE id = ?',
+            [nextAttempts, id]
+        );
+
+        flash(
+            req,
+            'danger',
+            `OTP salah. Sisa percobaan: ${5 - nextAttempts}.`
+        );
+
+        return res.redirect('/register/verify');
+    }
+
+    // Periksa kembali sebelum membuat akun.
+    const [existing] = await q(
+        `SELECT id
+         FROM users
+         WHERE email = ? OR whatsapp = ?
+         LIMIT 1`,
+        [pending.email, pending.whatsapp]
+    );
+
+    if (existing) {
+        await q('DELETE FROM pending_registrations WHERE id = ?', [id]);
+        delete req.session.pendingRegistrationId;
+
+        flash(req, 'danger', 'Email atau nomor WhatsApp sudah digunakan.');
+        return res.redirect('/register');
+    }
+
+    // Akun baru baru dibuat setelah OTP benar.
+    await q(
+        `INSERT INTO users
+            (
+                name, email, password_hash,
+                user_type, institution, whatsapp,
+                role, is_active
+            )
+         VALUES (?, ?, ?, ?, ?, ?, 'user', 1)`,
+        [
+            pending.name,
+            pending.email,
+            pending.password_hash,
+            pending.user_type,
+            pending.institution,
+            pending.whatsapp
+        ]
+    );
+
+    await q(
+        'DELETE FROM pending_registrations WHERE id = ?',
+        [id]
+    );
+
+    delete req.session.pendingRegistrationId;
+
+    flash(
+        req,
+        'success',
+        'Registrasi dan verifikasi WhatsApp berhasil. Silakan login.'
+    );
+
+    return res.redirect('/login');
+}));
+
+
+/* Tahap 4: kirim ulang OTP dengan jeda 60 detik */
+r.post('/register/resend-otp', otpLimiter, wrap(async (req, res) => {
+    if (!safeEqual(
+        String(req.body._csrf || ''),
+        String(req.session.verifyCsrf || '')
+    )) {
+        flash(req, 'danger', 'Sesi verifikasi tidak valid. Muat ulang halaman.');
+        return res.redirect('/register/verify');
+    }
+
+    delete req.session.verifyCsrf;
+
+    const id = req.session.pendingRegistrationId;
+
+    if (!id) {
+        flash(req, 'danger', 'Sesi registrasi berakhir. Silakan mulai lagi.');
+        return res.redirect('/register');
+    }
+
+    const [pending] = await q(
+        `SELECT *
+         FROM pending_registrations
+         WHERE id = ? AND expires_at > NOW()`,
+        [id]
+    );
+
+    if (!pending) {
+        await q('DELETE FROM pending_registrations WHERE id = ?', [id]);
+        delete req.session.pendingRegistrationId;
+
+        flash(req, 'danger', 'Data OTP kedaluwarsa. Silakan registrasi ulang.');
+        return res.redirect('/register');
+    }
+
+    const [cooldown] = await q(
+        `SELECT id
+         FROM pending_registrations
+         WHERE id = ?
+           AND last_sent_at > DATE_SUB(NOW(), INTERVAL 60 SECOND)`,
+        [id]
+    );
+
+    if (cooldown) {
+        flash(req, 'warning', 'Tunggu 60 detik sebelum meminta OTP lagi.');
+        return res.redirect('/register/verify');
+    }
+
+    const code = String(
+        crypto.randomInt(0, 1000000)
+    ).padStart(6, '0');
+
+    await q(
+        `UPDATE pending_registrations
+         SET otp_hash = ?,
+             attempts = 0,
+             expires_at = DATE_ADD(NOW(), INTERVAL 5 MINUTE),
+             last_sent_at = NOW()
+         WHERE id = ?`,
+        [otpHash(id, code), id]
+    );
+
+    const message =
+        `🔐 *Kode OTP TaskFlow*\n\n` +
+        `Kode verifikasi baru kamu: *${code}*\n\n` +
+        `Kode berlaku selama 5 menit.\n` +
+        `Jangan bagikan kode ini kepada siapa pun.`;
+
+    try {
+        const result = await sendWhatsApp(pending.whatsapp, message);
+
+        if (!['SUCCESS', 'PENDING'].includes(result.status)) {
+            throw new Error('Sidobe melaporkan pengiriman OTP gagal.');
+        }
+
+        flash(
+            req,
+            result.status === 'SUCCESS' ? 'success' : 'warning',
+            result.status === 'SUCCESS'
+                ? 'OTP baru telah dikirim.'
+                : 'Permintaan OTP baru sedang diproses.'
+        );
+    } catch (error) {
+        console.error('[OTP] Pengiriman ulang gagal:', error.message);
+
+        flash(
+            req,
+            'danger',
+            'Pengiriman ulang belum dapat dipastikan. Tunggu sebelum mencoba lagi.'
+        );
+    }
+
+    return res.redirect('/register/verify');
+}));
+
+
+r.post('/logout', (req, res) => req.session.destroy(() => { res.clearCookie('tf.sid'); res.redirect('/'); }));
+
+r.get('/profile', auth, wrap(async (req, res) => {
+  const [user] = await q(
+    `SELECT id, name, email, role, user_type, institution,
+            whatsapp, timezone, is_active, created_at, updated_at
+     FROM users
+     WHERE id = ?`,
+    [req.session.user.id]
+  );
+
+  if (!user) {
+    return res.status(404).render('error', {
+      code: 404,
+      msg: 'Pengguna tidak ditemukan'
+    });
+  }
+
+  res.render('profile', { user });
+}));
+
+
+
+
+r.get('/profile/edit', auth, wrap(async (req, res) => {
+  const [profile] = await q(
+    `SELECT id, name, email, whatsapp, user_type,
+            institution, role, timezone
+     FROM users
+     WHERE id = ?
+     LIMIT 1`,
+    [req.session.user.id]
+  );
+
+  if (!profile) {
+    return res.status(404).render('error', {
+      code: 404,
+      msg: 'Profil pengguna tidak ditemukan'
+    });
+  }
+
+  return res.render('profile_edit', { user: profile });
+}));
+
+
+r.post('/profile/edit', auth, wrap(async (req, res) => {
+  const schema = z.object({
+    name: z.string().trim().min(2).max(100),
+    whatsapp: z.string().trim().max(25).optional(),
+    institution: z.string().trim().max(150).optional(),
+    timezone: z.enum([
+      'Asia/Jakarta',
+      'Asia/Makassar',
+      'Asia/Jayapura'
+    ])
+  });
+
+  const parsed = schema.safeParse({
+    name: req.body.name,
+    whatsapp: String(req.body.whatsapp || '').trim(),
+    institution: String(req.body.institution || '').trim(),
+    timezone: String(
+      req.body.timezone || 'Asia/Jakarta'
+    ).trim()
+  });
+
+  if (!parsed.success) {
+    flash(req, 'danger', 'Data profil tidak valid. Periksa kembali isianmu.');
+    return res.redirect('/profile/edit');
+  }
+
+  const d = parsed.data;
+  const userId = req.session.user.id;
+
+  const result = await q(
+    `UPDATE users
+     SET name = ?, whatsapp = ?, institution = ?, timezone = ?
+     WHERE id = ?`,
+    [
+      d.name,
+      d.whatsapp || null,
+      d.institution || null,
+      d.timezone,
+      userId
+    ]
+  );
+
+  if (!result.affectedRows) {
+    const [existingUser] = await q(
+      'SELECT id FROM users WHERE id = ? LIMIT 1',
+      [userId]
+    );
+
+    if (!existingUser) {
+      return res.status(404).render('error', {
+        code: 404,
+        msg: 'Profil pengguna tidak ditemukan'
+      });
+    }
+  }
+
+  req.session.user.name = d.name;
+
+  flash(req, 'success', 'Profil berhasil diperbarui.');
+  return res.redirect('/profile');
+}));
+
+
+
+
+// ==========================================
+// 2. RUTE DASHBOARD & TUGAS (USER)
+// ==========================================
+r.get('/dashboard', auth, wrap(async (req, res) => {
+    const id = req.session.user.id;
+    const [s] = await q(`SELECT COUNT(*) total, SUM(status<>'selesai') open_, SUM(status='selesai') done, SUM(status<>'selesai' AND deadline<NOW()) late, SUM(status<>'selesai' AND deadline BETWEEN NOW() AND NOW()+INTERVAL 3 DAY) soon FROM tasks WHERE user_id=?`, [id]);
+    const next = await q("SELECT id,title,deadline,status,priority FROM tasks WHERE user_id=? AND status<>'selesai' ORDER BY deadline LIMIT 5", [id]);
+    res.render('dashboard', { s, next });
+}));
+
+r.get('/tasks', auth, wrap(async (req, res) => {
+    const id = req.session.user.id,
+          st = ['belum', 'proses', 'selesai'].includes(req.query.status) ? req.query.status : null,
+          qs = String(req.query.q || '').slice(0, 100);
+    const page = Math.max(1, parseInt(req.query.page) || 1), per = 10;
+    
+    let w = 'WHERE user_id=?', p = [id];
+    if (st) { w += ' AND status=?'; p.push(st); }
+    if (qs) { w += ' AND (title LIKE ? OR subject LIKE ?)'; p.push(`%${qs}%`, `%${qs}%`); }
+    
+    const [{ n }] = await q(`SELECT COUNT(*) n FROM tasks ${w}`, p);
+    const tasks = await q(`SELECT id,title,subject,deadline,priority,status,(status<>'selesai' AND deadline<NOW()) late FROM tasks ${w} ORDER BY deadline LIMIT ${per} OFFSET ${(page - 1) * per}`, p);
+    
+    res.render('tasks', { tasks, page, pages: Math.ceil(n / per), qs, st });
+}));
+
+const taskSchema = z.object({
+    title: z.string().trim().min(1).max(200),
+    description: z.string().max(5000).optional(),
+    subject: z.string().trim().max(150).optional(),
+    teacher: z.string().trim().max(120).optional(),
+    category_id: z.coerce.number().int().optional().or(z.literal('')),
+    deadline: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/),
+    priority: z.enum(['rendah', 'sedang', 'tinggi']),
+    status: z.enum(['belum', 'proses', 'selesai']),
+    notes: z.string().max(3000).optional()
+});
+
+const cats = () => q('SELECT id,name FROM task_categories ORDER BY name');
+
+r.get('/tasks/new', auth, wrap(async (req, res) => res.render('task_form', { t: {}, cats: await cats() })));
+
+const upload = multer({
+    storage: multer.diskStorage({ destination: UP, filename: (q_, f, cb) => cb(null, crypto.randomBytes(16).toString('hex')) }),
+    limits: { fileSize: MAX, files: 1 },
+    fileFilter: (q_, f, cb) => cb(null, /\.(pdf|docx?|xlsx?|pptx?|jpe?g|png)$/i.test(f.originalname))
+});
+
+const SIG = { pdf: [0x25, 0x50, 0x44, 0x46], png: [0x89, 0x50, 0x4e, 0x47], jpg: [0xff, 0xd8, 0xff], jpeg: [0xff, 0xd8, 0xff], docx: [0x50, 0x4b], xlsx: [0x50, 0x4b], pptx: [0x50, 0x4b], doc: [0xd0, 0xcf], xls: [0xd0, 0xcf], ppt: [0xd0, 0xcf] };
+const sigOk = (f) => { const e = path.extname(f.originalname).slice(1).toLowerCase(), b = Buffer.alloc(4), fd = fs.openSync(f.path, 'r'); fs.readSync(fd, b, 0, 4, 0); fs.closeSync(fd); return SIG[e]?.every((x, i) => b[i] === x); };
+
+async function saveTask(req, res, id) {
+    const s = taskSchema.safeParse(req.body);
+
+    if (req.file && !sigOk(req.file)) {
+        fs.unlink(req.file.path, () => {});
+        flash(req, 'danger', 'Isi file tidak sesuai ekstensi');
+        return back(req, res);
+    }
+
+    if (!s.success) {
+        if (req.file) fs.unlink(req.file.path, () => {});
+        flash(req, 'danger', 'Data tugas tidak valid');
+        return back(req, res);
+    }
+
+    const d = s.data;
+    const userId = req.session.user.id;
+
+    // Ambil status lama sebelum melakukan UPDATE.
+    let previousTask = null;
+
+    if (id) {
+        const rows = await q(
+            'SELECT id, title, status FROM tasks WHERE id = ? AND user_id = ?',
+            [id, userId]
+        );
+
+        previousTask = rows[0] || null;
+
+        if (!previousTask) {
+            if (req.file) fs.unlink(req.file.path, () => {});
+
+            return res.status(404).render('error', {
+                code: 404,
+                msg: 'Tugas tidak ditemukan'
+            });
+        }
+    }
+
+    const v = [
+        d.title,
+        d.description || null,
+        d.subject || null,
+        d.teacher || null,
+        d.category_id || null,
+        d.deadline.replace('T', ' ') + ':00',
+        d.priority,
+        d.status,
+        d.notes || null,
+        d.status === 'selesai'
+            ? new Date().toISOString().slice(0, 19).replace('T', ' ')
+            : null
+    ];
+
+    let isNewTask = false;
+
+    if (id) {
+        const x = await q(
+            `UPDATE tasks
+             SET title=?, description=?, subject=?, teacher=?,
+                 category_id=?, deadline=?, priority=?, status=?,
+                 notes=?, completed_at=?
+             WHERE id=? AND user_id=?`,
+            [...v, id, userId]
+        );
+
+        if (!x.affectedRows) {
+            if (req.file) fs.unlink(req.file.path, () => {});
+
+            return res.status(404).render('error', {
+                code: 404,
+                msg: 'Tugas tidak ditemukan'
+            });
+        }
+    } else {
+        id = (
+            await q(
+                `INSERT INTO tasks
+                    (title, description, subject, teacher, category_id,
+                     deadline, priority, status, notes, completed_at, user_id)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                [...v, userId]
+            )
+        ).insertId;
+
+        isNewTask = true;
+    }
+
+    // Pertahankan proses lampiran yang sudah ada.
+    if (req.file) {
+        const old = await q(
+            'SELECT stored_name FROM task_attachments WHERE task_id=?',
+            [id]
+        );
+
+        old.forEach(o => {
+            fs.unlink(path.join(UP, o.stored_name), () => {});
+        });
+
+        await q(
+            'DELETE FROM task_attachments WHERE task_id=?',
+            [id]
+        );
+
+        await q(
+            `INSERT INTO task_attachments
+                (task_id, original_name, stored_name, mime, size_bytes)
+             VALUES (?, ?, ?, ?, ?)`,
+            [
+                id,
+                Buffer.from(req.file.originalname, 'latin1')
+                    .toString('utf8')
+                    .slice(0, 255),
+                req.file.filename,
+                req.file.mimetype,
+                req.file.size
+            ]
+        );
+    }
+
+    // Integrasi notifikasi WhatsApp.
+    try {
+        const { queueNotification } = require('./notifications');
+
+        // Kirim notifikasi hanya ketika status baru berubah menjadi selesai.
+        const becameCompleted =
+            d.status === 'selesai' &&
+            previousTask &&
+            previousTask.status !== 'selesai';
+
+        if (becameCompleted) {
+            queueNotification(
+                userId,
+                `task-completed:${id}`,
+                `✅ *Tugas Selesai — TaskFlow*\n\n` +
+                `Tugas kamu telah ditandai selesai.\n\n` +
+                `📌 Tugas: ${d.title}\n` +
+                `🎉 Bagus, satu tugas sudah tuntas!`
+            );
+        }
+
+        // Tugas baru yang langsung dibuat dengan status selesai.
+        if (isNewTask && d.status === 'selesai') {
+            queueNotification(
+                userId,
+                `task-completed:${id}`,
+                `✅ *Tugas Selesai — TaskFlow*\n\n` +
+                `📌 Tugas: ${d.title}\n` +
+                `Tugas baru ini sudah berstatus selesai.`
+            );
+        }
+    } catch (error) {
+        // Kegagalan notifikasi tidak membatalkan penyimpanan tugas.
+        console.error(
+            '[TaskFlow] Gagal menjadwalkan notifikasi WhatsApp:',
+            error.message
+        );
+    }
+
+    flash(req, 'success', 'Tugas disimpan');
+    return res.redirect('/tasks/' + id);
+}
+
+r.post('/tasks', auth, upload.single('file'), wrap((req, res) => saveTask(req, res, null)));
+
+const mine = async (req) => (await q('SELECT t.*,c.name cat FROM tasks t LEFT JOIN task_categories c ON c.id=t.category_id WHERE t.id=? AND t.user_id=?', [+req.params.id, req.session.user.id]))[0];
+const nf = res => res.status(404).render('error', { code: 404, msg: 'Tidak ditemukan' });
+
+r.get('/tasks/:id', auth, wrap(async (req, res) => {
+    const t = await mine(req);
+    if (!t) return nf(res);
+    res.render('task_detail', { t, att: (await q('SELECT * FROM task_attachments WHERE task_id=?', [t.id]))[0] });
+}));
+
+r.get('/tasks/:id/edit', auth, wrap(async (req, res) => {
+    const t = await mine(req);
+    if (!t) return nf(res);
+    t.deadline = String(t.deadline).slice(0, 16).replace(' ', 'T');
+    res.render('task_form', { t, cats: await cats() });
+}));
+
+r.post('/tasks/:id/edit', auth, upload.single('file'), wrap((req, res) => saveTask(req, res, +req.params.id)));
+
+
+r.post('/tasks/:id/status', auth, wrap(async (req, res) => {
+    const st = z.enum(['belum', 'proses', 'selesai']).parse(req.body.status);
+    const taskId = Number(req.params.id);
+    const userId = req.session.user.id;
+
+    // Ambil status tugas sebelum diperbarui.
+    const [task] = await q(
+        'SELECT id, title, status FROM tasks WHERE id = ? AND user_id = ?',
+        [taskId, userId]
+    );
+
+    if (!task) {
+        return res.status(404).render('error', {
+            code: 404,
+            msg: 'Tugas tidak ditemukan'
+        });
+    }
+
+    // Simpan status baru.
+    await q(
+        `UPDATE tasks
+         SET status = ?, completed_at = IF(? = 'selesai', NOW(), NULL)
+         WHERE id = ? AND user_id = ?`,
+        [st, st, taskId, userId]
+    );
+
+    // Kirim notifikasi hanya saat status berubah menjadi selesai.
+    if (st === 'selesai' && task.status !== 'selesai') {
+        try {
+            const { queueNotification } = require('./notifications');
+
+            await queueNotification(
+                userId,
+                `task-completed:${taskId}`,
+                `✅ *Tugas Selesai — TaskFlow*\n\n` +
+                `Tugas kamu telah ditandai selesai.\n\n` +
+                `📌 Tugas: ${task.title}\n` +
+                `🎉 Bagus, satu tugas sudah tuntas!`
+            );
+        } catch (error) {
+            console.error(
+                '[TaskFlow] Notifikasi tugas selesai gagal:',
+                error.message
+            );
+        }
+    }
+
+    back(req, res);
+}));
+
+
+r.post('/tasks/:id/delete', auth, wrap(async (req, res) => {
+    const t = await mine(req);
+    if (t) {
+        (await q('SELECT stored_name FROM task_attachments WHERE task_id=?', [t.id])).forEach(o => fs.unlink(path.join(UP, o.stored_name), () => {}));
+        await q('DELETE FROM tasks WHERE id=? AND user_id=?', [t.id, req.session.user.id]);
+    }
+    flash(req, 'success', 'Tugas dihapus');
+    res.redirect('/tasks');
+}));
+
+r.get('/files/:id', auth, wrap(async (req, res) => {
+    const [a] = await q('SELECT a.* FROM task_attachments a JOIN tasks t ON t.id=a.task_id WHERE a.id=? AND t.user_id=?', [+req.params.id, req.session.user.id]);
+    if (!a) return nf(res);
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.download(path.join(UP, path.basename(a.stored_name)), a.original_name);
+}));
+
+// ==========================================
+// 3. RUTE PANEL ADMIN & FITUR LAINNYA
+// ==========================================
+r.get('/admin', auth, admin, wrap(async (req, res) => {
+    const [s] = await q(`SELECT (SELECT COUNT(*) FROM users) users, COUNT(*) total, SUM(status<>'selesai') open_, SUM(status='selesai') done, SUM(status<>'selesai' AND deadline<NOW()) late FROM tasks`);
+    const logs = await q('SELECT l.*,u.email FROM audit_logs l LEFT JOIN users u ON u.id=l.actor_id ORDER BY l.id DESC LIMIT 10');
+    res.render('admin', { s, logs });
+}));
+
+r.get('/admin/users', auth, admin, wrap(async (req, res) => {
+    const qs = String(req.query.q || '').slice(0, 100);
+    const users = await q(`SELECT u.id,u.name,u.email,u.role,u.is_active,(SELECT COUNT(*) FROM tasks t WHERE t.user_id=u.id) tasks FROM users u WHERE u.name LIKE ? OR u.email LIKE ? ORDER BY u.id DESC LIMIT 100`, [`%${qs}%`, `%${qs}%`]);
+    res.render('admin_users', { users, qs });
+}));
+
+r.post('/admin/users/:id', auth, admin, wrap(async (req, res) => {
+    const id = +req.params.id;
+    if (id === req.session.user.id) { flash(req, 'danger', 'Tidak dapat mengubah akun sendiri'); return back(req, res); }
+    if (req.body.action === 'toggle') { await q('UPDATE users SET is_active=1-is_active WHERE id=?', [id]); audit(req, 'status_change', 'user ' + id); }
+    if (req.body.action === 'role' && ['user', 'admin'].includes(req.body.role)) { await q('UPDATE users SET role=? WHERE id=?', [req.body.role, id]); audit(req, 'role_change', `user ${id} -> ${req.body.role}`); }
+    back(req, res);
+}));
+
+
+
+const REMINDER_DAYS = [7, 3, 1];
+
+// Mengambil tanggal/waktu deadline sebagai waktu WIB.
+// Asumsi: kolom MySQL DATETIME menyimpan jam lokal WIB tanpa zona waktu.
+const parseDeadline = value => {
+    if (!value) return null;
+
+    let match;
+
+    if (typeof value === 'string') {
+        match = value.match(
+            /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,3}))?)?$/
+        );
+    }
+
+    if (match) {
+        const [, y, mo, d, h, mi, s = '0', ms = '0'] = match;
+
+        const parts = [
+            Number(y),
+            Number(mo) - 1,
+            Number(d),
+            Number(h),
+            Number(mi),
+            Number(s),
+            Number(ms.padEnd(3, '0'))
+        ];
+
+        // Validasi agar tanggal tidak dinormalisasi diam-diam.
+        const [year, month, day, hour, minute, second, milli] = parts;
+        const check = new Date(Date.UTC(
+            year, month, day, hour, minute, second, milli
+        ));
+
+        if (
+            check.getUTCFullYear() !== year ||
+            check.getUTCMonth() !== month ||
+            check.getUTCDate() !== day ||
+            check.getUTCHours() !== hour ||
+            check.getUTCMinutes() !== minute ||
+            check.getUTCSeconds() !== second
+        ) {
+            return null;
+        }
+
+        // Ubah jam dinding WIB menjadi timestamp absolut.
+        return new Date(Date.UTC(
+            year, month, day, hour - 7, minute, second, milli
+        ));
+    }
+
+    if (value instanceof Date) {
+        if (Number.isNaN(value.getTime())) return null;
+
+        // Untuk DATETIME yang dikembalikan driver MySQL sebagai Date,
+        // diasumsikan komponen UTC-nya mewakili jam dinding database.
+        return new Date(Date.UTC(
+            value.getUTCFullYear(),
+            value.getUTCMonth(),
+            value.getUTCDate(),
+            value.getUTCHours() - 7,
+            value.getUTCMinutes(),
+            value.getUTCSeconds(),
+            value.getUTCMilliseconds()
+        ));
+    }
+
+    // Untuk timestamp ISO yang sudah memiliki zona waktu.
+    if (typeof value === 'string') {
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    return null;
+};
+
+// Format tanggal untuk tampilan Indonesia.
+const formatDate = value => {
+    const date = parseDeadline(value);
+    if (!date) return '-';
+
+    return date.toLocaleString('id-ID', {
+        timeZone: 'Asia/Jakarta',
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hourCycle: 'h23'
+    });
+};
+
+// Waktu saat ini dalam zona WIB, tanpa bergantung pada zona waktu server.
+const WIB_NOW_SQL =
+    "CONVERT_TZ(UTC_TIMESTAMP(), '+00:00', '+07:00')";
+
+// Halaman pengaturan pengingat.
+r.get('/reminders', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+
+    // Inisialisasi pengaturan default untuk pengguna baru.
+    const [existing] = await q(
+        `SELECT COUNT(*) AS total
+         FROM reminder_preferences
+         WHERE user_id = ?`,
+        [userId]
+    );
+
+    if (Number(existing.total) === 0) {
+        for (const day of REMINDER_DAYS) {
+            await q(
+                `INSERT INTO reminder_preferences
+                    (user_id, days_before, enabled)
+                 VALUES (?, ?, 1)
+                 ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)`,
+                [userId, day]
+            );
+        }
+    }
+
+    // Ambil preferensi pengingat pengguna.
+    const preferences = await q(
+        `SELECT days_before, enabled
+         FROM reminder_preferences
+         WHERE user_id = ?`,
+        [userId]
+    );
+
+    const selected = {};
+    for (const day of REMINDER_DAYS) {
+        selected[day] = false;
+    }
+
+    for (const pref of preferences) {
+        selected[Number(pref.days_before)] =
+            Number(pref.enabled) === 1;
+    }
+
+    // Statistik tugas berdasarkan waktu WIB.
+    const [totals] = await q(
+        `SELECT
+            COUNT(*) AS total,
+            COALESCE(SUM(status <> 'selesai'), 0) AS unfinished,
+            COALESCE(
+                SUM(
+                    status <> 'selesai'
+                    AND deadline < ${WIB_NOW_SQL}
+                ),
+                0
+            ) AS overdue
+         FROM tasks
+         WHERE user_id = ?`,
+        [userId]
+    );
+
+    // Deadline terdekat yang belum selesai.
+    const [nextTask] = await q(
+        `SELECT id, title, deadline
+         FROM tasks
+         WHERE user_id = ?
+           AND status <> 'selesai'
+           AND deadline >= ${WIB_NOW_SQL}
+         ORDER BY deadline ASC
+         LIMIT 1`,
+        [userId]
+    );
+
+    // Agenda H-7, H-3, dan H-1 berdasarkan tanggal WIB.
+    const byDay = {};
+
+    for (const day of REMINDER_DAYS) {
+        byDay[day] = await q(
+            `SELECT id, title, deadline
+             FROM tasks
+             WHERE user_id = ?
+               AND status <> 'selesai'
+               AND DATE(deadline) = DATE_ADD(
+                   DATE(${WIB_NOW_SQL}),
+                   INTERVAL ? DAY
+               )
+             ORDER BY deadline ASC`,
+            [userId, day]
+        );
+    }
+
+    // Perhitungan sisa hari menggunakan waktu WIB.
+    const nextDeadlineDate = nextTask
+        ? parseDeadline(nextTask.deadline)
+        : null;
+
+    const summary = {
+        total: Number(totals.total || 0),
+        unfinished: Number(totals.unfinished || 0),
+        overdue: Number(totals.overdue || 0),
+
+        next: nextTask ? {
+            ...nextTask,
+            deadline: formatDate(nextTask.deadline),
+            daysLeft: nextDeadlineDate
+                ? Math.max(
+                    0,
+                    Math.ceil(
+                        (
+                            nextDeadlineDate.getTime() -
+                            Date.now()
+                        ) / 86400000
+                    )
+                )
+                : 0
+        } : null,
+
+        byDay
+    };
+
+    res.render('reminders', {
+        windows: REMINDER_DAYS,
+        selected,
+        summary,
+        formatDate
+    });
+}));
+
+// Simpan pengaturan pengingat pengguna.
+r.post('/reminders', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+    const raw = req.body.days_before;
+
+    const values = (Array.isArray(raw) ? raw : raw ? [raw] : [])
+        .map(Number)
+        .filter(day => REMINDER_DAYS.includes(day));
+
+    for (const day of REMINDER_DAYS) {
+        await q(
+            `INSERT INTO reminder_preferences
+                (user_id, days_before, enabled)
+             VALUES (?, ?, ?)
+             ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)`,
+            [userId, day, values.includes(day) ? 1 : 0]
+        );
+    }
+
+    flash(req, 'success', 'Pengaturan pengingat berhasil disimpan.');
+    res.redirect('/reminders');
+}));
+
+
+
+const {
+    queueNotification,
+    notifyGroupMembers
+} = require('./notifications');
+
+/* ==========================================
+   3. KALENDER AKADEMIK
+========================================== */
+
+// Menampilkan kalender dan agenda milik pengguna
+r.get('/calendar', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+
+    const month = /^\d{4}-\d{2}$/.test(String(req.query.month || ''))
+        ? String(req.query.month)
+        : new Date().toISOString().slice(0, 7);
+
+    const events = await q(`
+        SELECT id, title, description, event_type,
+               start_at, end_at, location, color
+        FROM academic_events
+        WHERE user_id = ?
+          AND start_at >= ?
+          AND start_at < DATE_ADD(?, INTERVAL 1 MONTH)
+        ORDER BY start_at ASC
+    `, [
+        userId,
+        `${month}-01`,
+        `${month}-01`
+    ]);
+
+    // Deadline tugas yang belum selesai pada bulan terpilih
+    const tasks = await q(`
+        SELECT id, title, deadline, status, priority
+        FROM tasks
+        WHERE user_id = ?
+          AND deadline >= ?
+          AND deadline < DATE_ADD(?, INTERVAL 1 MONTH)
+        ORDER BY deadline ASC
+    `, [
+        userId,
+        `${month}-01`,
+        `${month}-01`
+    ]);
+
+    res.render('calendar', { month, events, tasks });
+}));
+
+
+// Membuat agenda kalender
+r.post('/calendar/events', auth, wrap(async (req, res) => {
+    const title = String(req.body.title || '').trim();
+    const description = String(req.body.description || '').trim();
+    const type = String(req.body.event_type || 'lainnya');
+    const location = String(req.body.location || '').trim();
+    const startAt = String(req.body.start_at || '').trim();
+    const endAt = String(req.body.end_at || '').trim();
+
+    const allowedTypes = [
+        'kuliah', 'ujian', 'presentasi', 'deadline', 'lainnya'
+    ];
+
+    const datePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+
+    if (
+        !title ||
+        title.length > 200 ||
+        description.length > 5000 ||
+        location.length > 200 ||
+        !allowedTypes.includes(type) ||
+        !datePattern.test(startAt) ||
+        (endAt && !datePattern.test(endAt))
+    ) {
+        flash(req, 'danger', 'Data agenda tidak valid');
+        return res.redirect('/calendar');
+    }
+
+    const startDate = new Date(startAt);
+    const endDate = endAt ? new Date(endAt) : null;
+
+    if (
+        Number.isNaN(startDate.getTime()) ||
+        (endDate && (
+            Number.isNaN(endDate.getTime()) ||
+            endDate < startDate
+        ))
+    ) {
+        flash(req, 'danger', 'Tanggal agenda tidak valid');
+        return res.redirect('/calendar');
+    }
+
+    await q(`
+        INSERT INTO academic_events
+        (user_id, title, description, event_type,
+         start_at, end_at, location)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [
+        req.session.user.id,
+        title,
+        description || null,
+        type,
+        startAt.replace('T', ' ') + ':00',
+        endAt ? endAt.replace('T', ' ') + ':00' : null,
+        location || null
+    ]);
+
+    flash(req, 'success', 'Agenda berhasil ditambahkan');
+    res.redirect('/calendar?month=' + startAt.slice(0, 7));
+}));
+
+
+// Menghapus agenda milik sendiri
+r.post('/calendar/events/:id/delete', auth, wrap(async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isSafeInteger(id) || id < 1) {
+        flash(req, 'danger', 'ID agenda tidak valid');
+        return res.redirect('/calendar');
+    }
+
+    const result = await q(`
+        DELETE FROM academic_events
+        WHERE id = ? AND user_id = ?
+    `, [id, req.session.user.id]);
+
+    flash(
+        req,
+        result.affectedRows ? 'success' : 'danger',
+        result.affectedRows
+            ? 'Agenda berhasil dihapus'
+            : 'Agenda tidak ditemukan'
+    );
+
+    res.redirect('/calendar');
+}));
+
+
+/* ==========================================
+   4. TUGAS KELOMPOK
+========================================== */
+
+// Menampilkan kelompok yang diikuti pengguna
+r.get('/groups', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+
+    const groups = await q(`
+        SELECT g.id, g.name, g.description,
+               g.owner_id, g.invite_code, gm.role,
+               (SELECT COUNT(*)
+                FROM task_group_members m
+                WHERE m.group_id = g.id) AS member_count,
+               (SELECT COUNT(*)
+                FROM group_tasks t
+                WHERE t.group_id = g.id) AS task_count
+        FROM task_groups g
+        JOIN task_group_members gm ON gm.group_id = g.id
+        WHERE gm.user_id = ?
+        ORDER BY g.created_at DESC
+    `, [userId]);
+
+    res.render('groups', { groups });
+}));
+
+
+// Membuat kelompok dan otomatis menjadi ketua
+r.post('/groups', auth, wrap(async (req, res) => {
+    const name = String(req.body.name || '').trim();
+    const description = String(req.body.description || '').trim();
+
+    if (
+        name.length < 3 ||
+        name.length > 150 ||
+        description.length > 5000
+    ) {
+        flash(req, 'danger', 'Nama atau deskripsi kelompok tidak valid');
+        return res.redirect('/groups');
+    }
+
+    const inviteCode = require('crypto')
+        .randomBytes(18)
+        .toString('hex');
+
+    const userId = req.session.user.id;
+    const conn = await require('./db').pool.promise().getConnection();
+
+    try {
+        await conn.beginTransaction();
+
+        const [created] = await conn.execute(`
+            INSERT INTO task_groups
+            (owner_id, name, description, invite_code)
+            VALUES (?, ?, ?, ?)
+        `, [userId, name, description || null, inviteCode]);
+
+        await conn.execute(`
+            INSERT INTO task_group_members
+            (group_id, user_id, role)
+            VALUES (?, ?, 'ketua')
+        `, [created.insertId, userId]);
+
+        await conn.commit();
+
+        flash(req, 'success', 'Kelompok berhasil dibuat');
+        res.redirect('/groups/' + created.insertId);
+    } catch (err) {
+        await conn.rollback();
+        throw err;
+    } finally {
+        conn.release();
+    }
+}));
+
+
+// Detail kelompok, anggota dan daftar pekerjaan
+r.get('/groups/:id', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+    const groupId = Number(req.params.id);
+
+    if (!Number.isSafeInteger(groupId) || groupId < 1) {
+        return nf(res);
+    }
+
+    const [group] = await q(`
+        SELECT g.*, gm.role
+        FROM task_groups g
+        JOIN task_group_members gm ON gm.group_id = g.id
+        WHERE g.id = ? AND gm.user_id = ?
+    `, [groupId, userId]);
+
+    if (!group) return nf(res);
+
+    const members = await q(`
+        SELECT u.id, u.name, u.email, gm.role
+        FROM task_group_members gm
+        JOIN users u ON u.id = gm.user_id
+        WHERE gm.group_id = ?
+        ORDER BY gm.role DESC, u.name ASC
+    `, [groupId]);
+
+    const tasks = await q(`
+        SELECT t.*, u.name AS assignee_name
+        FROM group_tasks t
+        LEFT JOIN users u ON u.id = t.assigned_to
+        WHERE t.group_id = ?
+        ORDER BY
+            CASE t.status
+                WHEN 'proses' THEN 1
+                WHEN 'belum' THEN 2
+                ELSE 3
+            END,
+            t.deadline ASC
+    `, [groupId]);
+
+    res.render('group_detail', { group, members, tasks });
+}));
+
+
+// Menambahkan anggota berdasarkan email
+// Hanya ketua yang boleh menambahkan anggota
+r.post('/groups/:id/members', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+    const groupId = Number(req.params.id);
+    const email = String(req.body.email || '').trim().toLowerCase();
+
+    const [group] = await q(`
+        SELECT g.id
+        FROM task_groups g
+        JOIN task_group_members gm ON gm.group_id = g.id
+        WHERE g.id = ? AND gm.user_id = ? AND gm.role = 'ketua'
+    `, [groupId, userId]);
+
+    if (!group) {
+        return res.status(403).render('error', {
+            code: 403,
+            msg: 'Hanya ketua kelompok yang dapat menambahkan anggota'
+        });
+    }
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 190) {
+        flash(req, 'danger', 'Email tidak valid');
+        return res.redirect('/groups/' + groupId);
+    }
+
+    const [member] = await q(`
+        SELECT id FROM users
+        WHERE email = ? AND is_active = 1
+    `, [email]);
+
+    if (!member) {
+        flash(req, 'danger', 'Akun aktif dengan email tersebut tidak ditemukan');
+        return res.redirect('/groups/' + groupId);
+    }
+
+    await q(`
+        INSERT IGNORE INTO task_group_members (group_id, user_id, role)
+        VALUES (?, ?, 'anggota')
+    `, [groupId, member.id]);
+
+    flash(req, 'success', 'Anggota berhasil ditambahkan');
+    res.redirect('/groups/' + groupId);
+}));
+
+
+// Membuat tugas kelompok
+r.post('/groups/:id/tasks', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+    const groupId = Number(req.params.id);
+    const title = String(req.body.title || '').trim();
+    const description = String(req.body.description || '').trim();
+    const deadline = String(req.body.deadline || '').trim();
+    const assignedTo = req.body.assigned_to
+        ? Number(req.body.assigned_to)
+        : null;
+
+    const [membership] = await q(`
+        SELECT group_id FROM task_group_members
+        WHERE group_id = ? AND user_id = ?
+    `, [groupId, userId]);
+
+    if (!membership) return nf(res);
+
+    if (
+        title.length < 1 ||
+        title.length > 200 ||
+        description.length > 5000
+    ) {
+        flash(req, 'danger', 'Judul atau deskripsi tugas tidak valid');
+        return res.redirect('/groups/' + groupId);
+    }
+
+    if (deadline && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(deadline)) {
+        flash(req, 'danger', 'Format deadline tidak valid');
+        return res.redirect('/groups/' + groupId);
+    }
+
+    if (deadline && Number.isNaN(new Date(deadline).getTime())) {
+        flash(req, 'danger', 'Tanggal deadline tidak valid');
+        return res.redirect('/groups/' + groupId);
+    }
+
+    if (assignedTo !== null) {
+        const [assignee] = await q(`
+            SELECT user_id FROM task_group_members
+            WHERE group_id = ? AND user_id = ?
+        `, [groupId, assignedTo]);
+
+        if (!assignee) {
+            flash(req, 'danger', 'Penanggung jawab bukan anggota kelompok');
+            return res.redirect('/groups/' + groupId);
+        }
+    }
+
+    await q(`
+        INSERT INTO group_tasks
+        (group_id, assigned_to, title, description,
+         deadline, status, created_by)
+        VALUES (?, ?, ?, ?, ?, 'belum', ?)
+    `, [
+        groupId,
+        assignedTo,
+        title,
+        description || null,
+        deadline ? deadline.replace('T', ' ') + ':00' : null,
+        userId
+    ]);
+
+    flash(req, 'success', 'Tugas kelompok berhasil dibuat');
+    res.redirect('/groups/' + groupId);
+}));
+
+
+// Memperbarui status tugas kelompok
+r.post('/groups/:id/tasks/:taskId/status', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+    const groupId = Number(req.params.id);
+    const taskId = Number(req.params.taskId);
+    const status = String(req.body.status || '');
+
+    if (
+        !Number.isSafeInteger(groupId) ||
+        !Number.isSafeInteger(taskId) ||
+        groupId < 1 ||
+        taskId < 1 ||
+        !['belum', 'proses', 'selesai'].includes(status)
+    ) {
+        flash(req, 'danger', 'Data status tidak valid');
+        return res.redirect('/groups');
+    }
+
+    // Anggota hanya dapat mengubah tugas yang ditugaskan kepadanya.
+    // Ketua dapat mengubah status tugas anggota mana pun.
+    const result = await q(`
+        UPDATE group_tasks t
+        JOIN task_group_members gm ON gm.group_id = t.group_id
+        SET t.status = ?
+        WHERE t.id = ?
+          AND t.group_id = ?
+          AND gm.user_id = ?
+          AND (
+              gm.role = 'ketua'
+              OR t.assigned_to = gm.user_id
+          )
+    `, [status, taskId, groupId, userId]);
+
+    flash(
+        req,
+        result.affectedRows ? 'success' : 'danger',
+        result.affectedRows
+            ? 'Status tugas berhasil diperbarui'
+            : 'Tugas tidak ditemukan atau kamu tidak berwenang mengubahnya'
+    );
+
+    res.redirect('/groups/' + groupId);
+}));
+
+
+
+r.post('/reminders', auth, wrap(async (req, res) => {
+    const userId = req.session.user.id;
+    const selected = new Set(
+        (Array.isArray(req.body.days_before) ? req.body.days_before : [req.body.days_before])
+            .filter(Boolean)
+            .map(Number)
+    );
+
+    for (const day of REMINDER_WINDOWS) {
+        const enabled = selected.has(day) ? 1 : 0;
+        await q(
+            'INSERT INTO reminder_preferences(user_id, days_before, enabled) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)',
+            [userId, day, enabled]
+        );
+    }
+
+    flash(req, 'success', 'Pengaturan pengingat berhasil disimpan');
+    res.redirect('/reminders');
+}));
+
+module.exports = r;

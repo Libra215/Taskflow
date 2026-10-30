@@ -1,0 +1,954 @@
+
+<%- include('partials/head', { title: 'Kalender Akademik' }) %>
+
+<style>
+    .calendar-page {
+        --ca-primary: #4f46e5;
+        --ca-border: #e8eaf2;
+        --ca-muted: #737991;
+        color: #20243a;
+        animation: caEnter .45s ease both;
+    }
+
+    @keyframes caEnter {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .calendar-page .text-muted {
+        color: var(--ca-muted) !important;
+    }
+
+    .ca-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 28px;
+        margin-bottom: 24px;
+        color: #fff;
+        border-radius: 20px;
+        background: linear-gradient(120deg, #3730a3, #4f46e5 60%, #818cf8);
+        box-shadow: 0 12px 28px rgba(79,70,229,.15);
+    }
+
+    .ca-hero::after {
+        content: "";
+        position: absolute;
+        width: 210px;
+        height: 210px;
+        top: -125px;
+        right: -45px;
+        border: 28px solid rgba(255,255,255,.1);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .ca-hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 20px;
+    }
+
+    .ca-hero-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 10px;
+        color: rgba(255,255,255,.8);
+        font-size: .73rem;
+        font-weight: 750;
+        letter-spacing: .8px;
+        text-transform: uppercase;
+    }
+
+    .ca-hero-title {
+        margin: 0;
+        font-size: clamp(1.45rem, 3vw, 2rem);
+        font-weight: 800;
+        letter-spacing: -.7px;
+    }
+
+    .ca-hero-description {
+        max-width: 490px;
+        margin: 9px 0 0;
+        color: rgba(255,255,255,.82);
+        font-size: .86rem;
+        line-height: 1.7;
+    }
+
+    .ca-hero-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 68px;
+        height: 68px;
+        border: 1px solid rgba(255,255,255,.22);
+        border-radius: 19px;
+        background: rgba(255,255,255,.13);
+        font-size: 2rem;
+    }
+
+    .ca-hero-action {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 18px;
+        padding: 10px 14px;
+        color: #4338ca;
+        background: #fff;
+        border-radius: 10px;
+        font-size: .82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .ca-hero-action:hover {
+        color: #312e81;
+        background: #eef2ff;
+        transform: translateY(-1px);
+    }
+
+    .ca-panel {
+        overflow: hidden;
+        height: 100%;
+        background: #fff;
+        border: 1px solid var(--ca-border);
+        border-radius: 17px;
+        box-shadow: 0 5px 18px rgba(30,41,59,.025);
+    }
+
+    .ca-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 19px 21px;
+        border-bottom: 1px solid #eff0f6;
+    }
+
+    .ca-panel-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 40px;
+        height: 40px;
+        color: #4f46e5;
+        background: #eef2ff;
+        border-radius: 12px;
+        font-size: 1.1rem;
+    }
+
+    .ca-panel-title {
+        margin: 0 0 4px;
+        color: #252942;
+        font-size: .95rem;
+        font-weight: 750;
+    }
+
+    .ca-panel-subtitle {
+        margin: 0;
+        color: var(--ca-muted);
+        font-size: .76rem;
+        line-height: 1.5;
+    }
+
+    .ca-panel-body {
+        padding: 21px;
+    }
+
+    .ca-label {
+        display: block;
+        margin-bottom: 7px;
+        color: #444a62;
+        font-size: .79rem;
+        font-weight: 700;
+    }
+
+    .ca-control {
+        min-height: 43px;
+        border: 1px solid #e2e6ef;
+        border-radius: 10px;
+        background: #fafbfe;
+        color: #252942;
+        font-size: .84rem;
+        transition: .2s ease;
+    }
+
+    .ca-control:focus {
+        border-color: #a5b4fc;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99,102,241,.1);
+    }
+
+    textarea.ca-control {
+        min-height: 100px;
+        resize: vertical;
+        line-height: 1.7;
+    }
+
+    .ca-primary-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 42px;
+        padding: 10px 15px;
+        border: 1px solid var(--ca-primary);
+        border-radius: 10px;
+        background: var(--ca-primary);
+        color: #fff;
+        font-size: .82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .ca-primary-btn:hover {
+        color: #fff;
+        background: #4338ca;
+        border-color: #4338ca;
+        transform: translateY(-1px);
+    }
+
+    .ca-outline-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 42px;
+        padding: 10px 14px;
+        border: 1px solid #d9dcfb;
+        border-radius: 10px;
+        background: #f5f6ff;
+        color: #4338ca;
+        font-size: .82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .ca-outline-btn:hover {
+        color: #3730a3;
+        background: #eef2ff;
+    }
+
+    .ca-month-panel {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 18px;
+        border: 1px solid #e1e5ff;
+        border-radius: 14px;
+        background: linear-gradient(120deg, #f8f9ff, #fff);
+    }
+
+    .ca-month-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 44px;
+        height: 44px;
+        border-radius: 12px;
+        color: #4f46e5;
+        background: #eef2ff;
+        font-size: 1.25rem;
+    }
+
+    .ca-month-label {
+        color: var(--ca-muted);
+        font-size: .74rem;
+    }
+
+    .ca-month-value {
+        margin-top: 3px;
+        color: #252942;
+        font-size: .9rem;
+        font-weight: 750;
+    }
+
+    .ca-agenda-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+
+    .ca-agenda-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 13px;
+        padding: 16px;
+        border: 1px solid var(--ca-border);
+        border-radius: 13px;
+        background: #fff;
+        transition: border-color .2s ease, background .2s ease;
+    }
+
+    .ca-agenda-item:hover {
+        border-color: #d7dafb;
+        background: #fcfcff;
+    }
+
+    .ca-agenda-marker {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 43px;
+        height: 43px;
+        color: #4f46e5;
+        background: #eef2ff;
+        border-radius: 12px;
+        font-size: 1.05rem;
+    }
+
+    .ca-agenda-main {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .ca-agenda-title {
+        margin: 0;
+        color: #252942;
+        font-size: .88rem;
+        font-weight: 750;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .ca-agenda-type {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        margin-bottom: 7px;
+        padding: 5px 8px;
+        border-radius: 7px;
+        color: #4338ca;
+        background: #eef2ff;
+        font-size: .69rem;
+        font-weight: 700;
+        text-transform: capitalize;
+    }
+
+    .ca-agenda-meta {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 13px;
+        margin-top: 9px;
+        color: var(--ca-muted);
+        font-size: .74rem;
+        line-height: 1.6;
+    }
+
+    .ca-agenda-description {
+        margin-top: 10px;
+        color: #555d76;
+        font-size: .81rem;
+        line-height: 1.7;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .ca-delete-btn {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 35px;
+        height: 35px;
+        border: 1px solid #fecaca;
+        border-radius: 9px;
+        background: #fff;
+        color: #dc2626;
+        cursor: pointer;
+        transition: .2s ease;
+    }
+
+    .ca-delete-btn:hover {
+        background: #fef2f2;
+    }
+
+    .ca-task-link {
+        display: block;
+        padding: 16px;
+        border: 1px solid var(--ca-border);
+        border-radius: 13px;
+        color: inherit;
+        background: #fff;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .ca-task-link:hover {
+        border-color: #c7d2fe;
+        background: #fafaff;
+        transform: translateY(-1px);
+    }
+
+    .ca-task-title {
+        color: #252942;
+        font-size: .85rem;
+        font-weight: 750;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .ca-task-deadline {
+        margin-top: 9px;
+        color: var(--ca-muted);
+        font-size: .74rem;
+        line-height: 1.6;
+    }
+
+    .ca-task-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 8px;
+        border: 1px solid transparent;
+        border-radius: 7px;
+        font-size: .69rem;
+        font-weight: 700;
+        white-space: nowrap;
+    }
+
+    .ca-status-done {
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .ca-status-progress {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .ca-status-open {
+        color: #a16207;
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+
+    .ca-status-other {
+        color: #64748b;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+
+    .ca-empty {
+        padding: 38px 17px;
+        text-align: center;
+        border: 1px dashed #dce1ec;
+        border-radius: 13px;
+        background: #fafbfe;
+    }
+
+    .ca-empty-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 52px;
+        height: 52px;
+        margin: 0 auto 12px;
+        border-radius: 16px;
+        color: #64748b;
+        background: #eef2f7;
+        font-size: 1.4rem;
+    }
+
+    .ca-empty-title {
+        margin-bottom: 6px;
+        color: #343950;
+        font-size: .87rem;
+        font-weight: 750;
+    }
+
+    .ca-empty-description {
+        max-width: 300px;
+        margin: 0 auto;
+        color: var(--ca-muted);
+        font-size: .77rem;
+        line-height: 1.65;
+    }
+
+    .ca-flash {
+        border-radius: 12px;
+        font-size: .85rem;
+    }
+
+    .ca-bottom-note {
+        margin-top: 23px;
+        color: var(--ca-muted);
+        font-size: .75rem;
+        text-align: center;
+    }
+
+    @media (max-width: 767.98px) {
+        .ca-hero {
+            padding: 23px 20px;
+        }
+
+        .ca-hero-icon {
+            width: 52px;
+            height: 52px;
+            font-size: 1.5rem;
+        }
+
+        .ca-panel-header,
+        .ca-panel-body {
+            padding: 17px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .ca-hero {
+            padding: 20px 16px;
+        }
+
+        .ca-hero-icon {
+            display: none;
+        }
+
+        .ca-panel-header,
+        .ca-panel-body {
+            padding: 15px;
+        }
+
+        .ca-agenda-item {
+            padding: 12px;
+            gap: 10px;
+        }
+
+        .ca-agenda-marker {
+            width: 37px;
+            height: 37px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .calendar-page,
+        .calendar-page * {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+</style>
+
+<div class="container py-4 calendar-page">
+
+    <!-- Hero -->
+    <section class="ca-hero">
+        <div class="ca-hero-content">
+            <div>
+                <div class="ca-hero-eyebrow">
+                    <i class="bi bi-calendar2-week"></i>
+                    Pusat agenda akademik
+                </div>
+
+                <h1 class="ca-hero-title">Kalender Akademik</h1>
+
+                <p class="ca-hero-description">
+                    Atur jadwal kuliah, ujian, presentasi, dan deadline tugas
+                    supaya aktivitas akademik tetap terorganisir.
+                </p>
+
+                <a href="/groups" class="ca-hero-action">
+                    <i class="bi bi-people"></i>
+                    Lihat tugas kelompok
+                    <i class="bi bi-arrow-up-right"></i>
+                </a>
+            </div>
+
+            <div class="ca-hero-icon">
+                <i class="bi bi-calendar2-check"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Flash message -->
+    <% if (typeof flash !== 'undefined' && flash) { %>
+        <div class="alert alert-<%= flash.t %> ca-flash mb-4" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <%= flash.m %>
+        </div>
+    <% } %>
+
+    <!-- Month filter -->
+    <section class="ca-panel mb-4">
+        <div class="ca-panel-header">
+            <div class="ca-panel-icon">
+                <i class="bi bi-calendar3"></i>
+            </div>
+
+            <div>
+                <h2 class="ca-panel-title">Periode kalender</h2>
+                <p class="ca-panel-subtitle">
+                    Pilih bulan untuk melihat agenda dan deadline.
+                </p>
+            </div>
+        </div>
+
+        <div class="ca-panel-body">
+            <form method="GET" action="/calendar" class="row g-3 align-items-end">
+                <div class="col-12 col-md-6">
+                    <label for="calendar-month" class="ca-label">Pilih bulan</label>
+
+                    <input
+                        id="calendar-month"
+                        type="month"
+                        name="month"
+                        class="form-control ca-control"
+                        value="<%= month %>"
+                        required
+                    >
+                </div>
+
+                <div class="col-12 col-md-auto">
+                    <button type="submit" class="ca-primary-btn w-100">
+                        <i class="bi bi-search"></i>
+                        Tampilkan agenda
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Add event -->
+    <section class="ca-panel mb-4">
+        <div class="ca-panel-header">
+            <div class="ca-panel-icon">
+                <i class="bi bi-calendar-plus"></i>
+            </div>
+
+            <div>
+                <h2 class="ca-panel-title">Tambah agenda baru</h2>
+                <p class="ca-panel-subtitle">
+                    Catat jadwal penting agar tidak terlewat.
+                </p>
+            </div>
+        </div>
+
+        <div class="ca-panel-body">
+            <form method="POST" action="/calendar/events">
+                <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+                <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                        <label for="event-title" class="ca-label">
+                            Nama agenda <span class="text-danger">*</span>
+                        </label>
+
+                        <input
+                            id="event-title"
+                            name="title"
+                            class="form-control ca-control"
+                            maxlength="200"
+                            placeholder="Contoh: Ujian tengah semester"
+                            required
+                        >
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="event-type" class="ca-label">Jenis agenda</label>
+
+                        <select id="event-type" name="event_type" class="form-select ca-control">
+                            <option value="kuliah">Kuliah</option>
+                            <option value="ujian">Ujian</option>
+                            <option value="presentasi">Presentasi</option>
+                            <option value="deadline">Deadline</option>
+                            <option value="lainnya">Lainnya</option>
+                        </select>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="event-start" class="ca-label">
+                            Waktu mulai <span class="text-danger">*</span>
+                        </label>
+
+                        <input
+                            id="event-start"
+                            type="datetime-local"
+                            name="start_at"
+                            class="form-control ca-control"
+                            required
+                        >
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <label for="event-end" class="ca-label">Waktu selesai</label>
+
+                        <input
+                            id="event-end"
+                            type="datetime-local"
+                            name="end_at"
+                            class="form-control ca-control"
+                        >
+
+                        <div class="form-text small">
+                            Opsional, jika agenda memiliki waktu selesai.
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="event-location" class="ca-label">Lokasi</label>
+
+                        <div class="input-group">
+                            <span class="input-group-text ca-control">
+                                <i class="bi bi-geo-alt text-muted"></i>
+                            </span>
+
+                            <input
+                                id="event-location"
+                                name="location"
+                                maxlength="200"
+                                class="form-control ca-control"
+                                placeholder="Ruang kelas, gedung, atau tautan online"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <label for="event-description" class="ca-label">Deskripsi</label>
+
+                        <textarea
+                            id="event-description"
+                            name="description"
+                            class="form-control ca-control"
+                            rows="3"
+                            maxlength="5000"
+                            placeholder="Tambahkan detail agenda, materi, atau persiapan yang diperlukan..."
+                        ></textarea>
+                    </div>
+
+                    <div class="col-12 pt-1">
+                        <button type="submit" class="ca-primary-btn">
+                            <i class="bi bi-plus-lg"></i>
+                            Simpan agenda
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Agenda and deadlines -->
+    <div class="row g-4">
+
+        <!-- Academic events -->
+        <div class="col-12 col-lg-7">
+            <section class="ca-panel">
+                <div class="ca-panel-header">
+                    <div class="ca-panel-icon">
+                        <i class="bi bi-calendar-event"></i>
+                    </div>
+
+                    <div>
+                        <h2 class="ca-panel-title">Agenda akademik</h2>
+                        <p class="ca-panel-subtitle">
+                            Jadwal kegiatan pada periode yang dipilih.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="ca-panel-body">
+                    <% if (!events.length) { %>
+                        <div class="ca-empty">
+                            <div class="ca-empty-icon">
+                                <i class="bi bi-calendar2-x"></i>
+                            </div>
+
+                            <h3 class="ca-empty-title">Belum ada agenda</h3>
+
+                            <p class="ca-empty-description">
+                                Belum ada agenda pada bulan ini. Tambahkan jadwal
+                                kuliah, ujian, atau kegiatan akademik di atas.
+                            </p>
+                        </div>
+                    <% } else { %>
+                        <div class="ca-agenda-list">
+                            <% events.forEach(function(event) {
+                                const eventType = String(event.event_type || 'lainnya').toLowerCase();
+
+                                const eventIconMap = {
+                                    kuliah: 'bi-mortarboard',
+                                    ujian: 'bi-journal-check',
+                                    presentasi: 'bi-easel',
+                                    deadline: 'bi-alarm',
+                                    lainnya: 'bi-calendar-event'
+                                };
+
+                                const eventIcon = eventIconMap[eventType] || 'bi-calendar-event';
+                            %>
+                                <article class="ca-agenda-item">
+                                    <div class="ca-agenda-marker">
+                                        <i class="bi <%= eventIcon %>"></i>
+                                    </div>
+
+                                    <div class="ca-agenda-main">
+                                        <span class="ca-agenda-type">
+                                            <i class="bi bi-tag"></i>
+                                            <%= event.event_type || 'lainnya' %>
+                                        </span>
+
+                                        <h3 class="ca-agenda-title">
+                                            <%= event.title %>
+                                        </h3>
+
+                                        <div class="ca-agenda-meta">
+                                            <span>
+                                                <i class="bi bi-clock me-1"></i>
+                                                <%= event.start_at %>
+                                            </span>
+
+                                            <% if (event.end_at) { %>
+                                                <span>
+                                                    <i class="bi bi-arrow-right me-1"></i>
+                                                    <%= event.end_at %>
+                                                </span>
+                                            <% } %>
+
+                                            <% if (event.location) { %>
+                                                <span>
+                                                    <i class="bi bi-geo-alt me-1"></i>
+                                                    <%= event.location %>
+                                                </span>
+                                            <% } %>
+                                        </div>
+
+                                        <% if (event.description) { %>
+                                            <div class="ca-agenda-description">
+                                                <%= event.description %>
+                                            </div>
+                                        <% } %>
+                                    </div>
+
+                                    <form
+                                        method="POST"
+                                        action="/calendar/events/<%= event.id %>/delete"
+                                        onsubmit="return confirm('Hapus agenda ini?')"
+                                    >
+                                        <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+                                        <button
+                                            type="submit"
+                                            class="ca-delete-btn"
+                                            aria-label="Hapus agenda"
+                                            title="Hapus agenda"
+                                        >
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </article>
+                            <% }); %>
+                        </div>
+                    <% } %>
+                </div>
+            </section>
+        </div>
+
+        <!-- Task deadlines -->
+        <div class="col-12 col-lg-5">
+            <section class="ca-panel">
+                <div class="ca-panel-header">
+                    <div class="ca-panel-icon">
+                        <i class="bi bi-alarm"></i>
+                    </div>
+
+                    <div>
+                        <h2 class="ca-panel-title">Deadline tugas</h2>
+                        <p class="ca-panel-subtitle">
+                            Tugas dengan tenggat pada periode ini.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="ca-panel-body">
+                    <% if (!tasks.length) { %>
+                        <div class="ca-empty">
+                            <div class="ca-empty-icon">
+                                <i class="bi bi-check2-circle"></i>
+                            </div>
+
+                            <h3 class="ca-empty-title">Tidak ada deadline</h3>
+
+                            <p class="ca-empty-description">
+                                Tidak ada tugas yang ditampilkan untuk bulan ini.
+                            </p>
+                        </div>
+                    <% } else { %>
+                        <div class="ca-agenda-list">
+                            <% tasks.forEach(function(task) {
+                                const taskStatus = String(task.status || '').toLowerCase();
+
+                                const taskStatusMap = {
+                                    selesai: {
+                                        label: 'Selesai',
+                                        style: 'ca-status-done',
+                                        icon: 'bi-check-circle-fill'
+                                    },
+                                    proses: {
+                                        label: 'Sedang dikerjakan',
+                                        style: 'ca-status-progress',
+                                        icon: 'bi-arrow-repeat'
+                                    },
+                                    belum: {
+                                        label: 'Belum dikerjakan',
+                                        style: 'ca-status-open',
+                                        icon: 'bi-clock'
+                                    }
+                                };
+
+                                const taskStatusInfo = taskStatusMap[taskStatus] || {
+                                    label: task.status || 'Tidak diketahui',
+                                    style: 'ca-status-other',
+                                    icon: 'bi-info-circle'
+                                };
+                            %>
+                                <a href="/tasks/<%= task.id %>" class="ca-task-link">
+                                    <div class="d-flex align-items-start justify-content-between gap-2">
+                                        <div class="ca-task-title">
+                                            <i class="bi bi-file-earmark-text text-primary me-1"></i>
+                                            <%= task.title %>
+                                        </div>
+
+                                        <span class="ca-task-status <%= taskStatusInfo.style %>">
+                                            <i class="bi <%= taskStatusInfo.icon %>"></i>
+                                            <%= taskStatusInfo.label %>
+                                        </span>
+                                    </div>
+
+                                    <div class="ca-task-deadline">
+                                        <i class="bi bi-calendar3 me-1"></i>
+                                        Deadline: <%= task.deadline %>
+
+                                        <div class="mt-2 text-primary">
+                                            Lihat detail tugas
+                                            <i class="bi bi-arrow-up-right ms-1"></i>
+                                        </div>
+                                    </div>
+                                </a>
+                            <% }); %>
+                        </div>
+                    <% } %>
+
+                    <a href="/tasks" class="ca-outline-btn w-100 mt-3">
+                        <i class="bi bi-list-task"></i>
+                        Lihat semua tugas
+                    </a>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <div class="ca-bottom-note">
+        <i class="bi bi-calendar-check me-1"></i>
+        Atur agenda lebih awal agar jadwal akademik tetap terkelola.
+    </div>
+</div>
+
+<%- include('partials/foot') %>

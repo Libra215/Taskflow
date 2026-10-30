@@ -1,0 +1,899 @@
+
+<%- include('partials/head', { title: 'Pengingat Tugas' }) %>
+
+<style>
+    .reminders-page {
+        --primary: #4f46e5;
+        --primary-light: #eef2ff;
+        --text-main: #172033;
+        --text-muted: #778195;
+        --border: #e8ebf2;
+        --surface: #ffffff;
+        color: var(--text-main);
+        font-size: 14px;
+        padding-bottom: 36px;
+    }
+
+    .reminders-page * {
+        box-sizing: border-box;
+    }
+
+    .reminders-page .page-heading {
+        font-size: 23px;
+        font-weight: 750;
+        line-height: 1.35;
+        letter-spacing: -.55px;
+        margin: 0 0 6px;
+    }
+
+    .reminders-page .page-description {
+        color: var(--text-muted);
+        font-size: 13px;
+        line-height: 1.65;
+        margin: 0;
+    }
+
+    .reminders-page .eyebrow {
+        color: var(--primary);
+        font-size: 10px;
+        font-weight: 750;
+        letter-spacing: 1.15px;
+        text-transform: uppercase;
+        margin-bottom: 7px;
+    }
+
+    .reminders-page .back-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 38px;
+        padding: 8px 13px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: #fff;
+        color: #465065;
+        font-size: 12px;
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+        transition: background .2s, border-color .2s;
+    }
+
+    .reminders-page .back-button:hover {
+        background: #f8f9fc;
+        border-color: #cbd2e0;
+    }
+
+    .reminders-page .hero-card {
+        position: relative;
+        isolation: isolate;
+        overflow: hidden;
+        padding: 25px 27px;
+        border-radius: 14px;
+        color: #fff;
+        background: linear-gradient(115deg, #3730a3 0%, #4f46e5 65%, #6366f1 100%);
+    }
+
+    .reminders-page .hero-card::after {
+        content: "";
+        position: absolute;
+        z-index: -1;
+        width: 190px;
+        height: 190px;
+        right: -60px;
+        top: -100px;
+        border: 30px solid rgba(255,255,255,.09);
+        border-radius: 50%;
+    }
+
+    .reminders-page .hero-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 5px 9px;
+        margin-bottom: 13px;
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 6px;
+        background: rgba(255,255,255,.12);
+        color: #fff;
+        font-size: 10px;
+        font-weight: 650;
+        letter-spacing: .35px;
+    }
+
+    .reminders-page .hero-title {
+        font-size: 20px;
+        font-weight: 750;
+        letter-spacing: -.35px;
+        line-height: 1.4;
+        margin: 0 0 7px;
+    }
+
+    .reminders-page .hero-description {
+        max-width: 520px;
+        color: rgba(255,255,255,.82);
+        font-size: 12px;
+        line-height: 1.8;
+        margin: 0;
+    }
+
+    .reminders-page .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 13px;
+    }
+
+    .reminders-page .stat-card {
+        height: 100%;
+        padding: 17px;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        transition: border-color .2s, transform .2s;
+    }
+
+    .reminders-page .stat-card:hover {
+        border-color: #d5d8f8;
+        transform: translateY(-2px);
+    }
+
+    .reminders-page .stat-top {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+
+    .reminders-page .stat-label {
+        color: var(--text-muted);
+        font-size: 12px;
+        font-weight: 550;
+    }
+
+    .reminders-page .stat-icon,
+    .reminders-page .section-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        width: 36px;
+        height: 36px;
+        border-radius: 9px;
+        font-size: 16px;
+    }
+
+    .reminders-page .icon-purple {
+        background: #eef2ff;
+        color: #4f46e5;
+    }
+
+    .reminders-page .icon-orange {
+        background: #fff4e5;
+        color: #d97706;
+    }
+
+    .reminders-page .icon-red {
+        background: #fff0f0;
+        color: #dc2626;
+    }
+
+    .reminders-page .icon-blue {
+        background: #edf6ff;
+        color: #2563eb;
+    }
+
+    .reminders-page .icon-green {
+        background: #eafaf1;
+        color: #16834b;
+    }
+
+    .reminders-page .stat-number {
+        font-size: 27px;
+        font-weight: 750;
+        letter-spacing: -.8px;
+        line-height: 1.2;
+        margin-bottom: 5px;
+        font-variant-numeric: tabular-nums;
+    }
+
+    .reminders-page .stat-note {
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.5;
+    }
+
+    .reminders-page .content-grid {
+        display: grid;
+        grid-template-columns: minmax(0, .92fr) minmax(0, 1.35fr);
+        align-items: start;
+        gap: 18px;
+    }
+
+    .reminders-page .content-column {
+        display: flex;
+        flex-direction: column;
+        gap: 18px;
+        min-width: 0;
+    }
+
+    .reminders-page .panel {
+        min-width: 0;
+        padding: 21px;
+        background: #fff;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: 0 3px 12px rgba(15,23,42,.025);
+    }
+
+    .reminders-page .section-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 11px;
+        margin-bottom: 19px;
+    }
+
+    .reminders-page .section-title {
+        font-size: 14px;
+        font-weight: 750;
+        letter-spacing: -.15px;
+        line-height: 1.5;
+        margin: 0 0 3px;
+    }
+
+    .reminders-page .section-description {
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.65;
+        margin: 0;
+    }
+
+    .reminders-page .reminder-options {
+        display: flex;
+        flex-direction: column;
+        gap: 9px;
+    }
+
+    .reminders-page .reminder-option {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 13px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        cursor: pointer;
+        transition: background .18s, border-color .18s;
+    }
+
+    .reminders-page .reminder-option:hover {
+        border-color: #c7c8fa;
+        background: #fafaff;
+    }
+
+    .reminders-page .reminder-option:has(input:checked) {
+        border-color: #aaaafa;
+        background: #f7f7ff;
+    }
+
+    .reminders-page .day-badge {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        min-width: 47px;
+        height: 35px;
+        padding: 0 8px;
+        border-radius: 7px;
+        background: var(--primary-light);
+        color: #4338ca;
+        font-size: 12px;
+        font-weight: 750;
+    }
+
+    .reminders-page .option-title {
+        display: block;
+        color: var(--text-main);
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1.5;
+        margin-bottom: 2px;
+    }
+
+    .reminders-page .option-description {
+        display: block;
+        color: var(--text-muted);
+        font-size: 10px;
+        line-height: 1.5;
+    }
+
+    .reminders-page .reminder-checkbox {
+        width: 17px;
+        height: 17px;
+        margin: 0 0 0 auto;
+        flex-shrink: 0;
+        cursor: pointer;
+        accent-color: var(--primary);
+    }
+
+    .reminders-page .info-note {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        padding: 11px 12px;
+        margin: 17px 0;
+        border: 1px solid #e5e9f5;
+        border-radius: 8px;
+        background: #f8faff;
+        color: #66718a;
+        font-size: 10px;
+        line-height: 1.7;
+    }
+
+    .reminders-page .info-note i {
+        color: var(--primary);
+        font-size: 13px;
+        margin-top: 1px;
+    }
+
+    .reminders-page .save-button {
+        width: 100%;
+        min-height: 41px;
+        padding: 10px 15px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--primary);
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        transition: background .2s;
+    }
+
+    .reminders-page .save-button:hover {
+        background: #4338ca;
+    }
+
+    .reminders-page .next-task {
+        display: block;
+        padding: 15px;
+        border: 1px solid #e8eafd;
+        border-radius: 9px;
+        background: #f9faff;
+        color: var(--text-main);
+        text-decoration: none;
+        transition: border-color .2s, background .2s;
+    }
+
+    .reminders-page .next-task:hover {
+        border-color: #c8cbfa;
+        background: #f5f5ff;
+    }
+
+    .reminders-page .next-task-title {
+        font-size: 13px;
+        font-weight: 750;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+        margin-bottom: 8px;
+    }
+
+    .reminders-page .task-meta {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 7px 13px;
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.6;
+    }
+
+    .reminders-page .status-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 8px;
+        border-radius: 6px;
+        background: #e9edff;
+        color: #4338ca;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    .reminders-page .task-link-hint {
+        margin-left: auto;
+        color: var(--primary);
+        font-size: 10px;
+        font-weight: 650;
+    }
+
+    .reminders-page .empty-state {
+        padding: 23px 12px;
+        text-align: center;
+    }
+
+    .reminders-page .empty-icon {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 45px;
+        height: 45px;
+        margin-bottom: 11px;
+        border-radius: 12px;
+        background: #eafaf1;
+        color: #16834b;
+        font-size: 21px;
+    }
+
+    .reminders-page .empty-title {
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .reminders-page .empty-description {
+        color: var(--text-muted);
+        font-size: 11px;
+        line-height: 1.7;
+        margin-bottom: 13px;
+    }
+
+    .reminders-page .empty-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border: 1px solid #cfd0fa;
+        border-radius: 7px;
+        color: var(--primary);
+        background: #fff;
+        text-decoration: none;
+        font-size: 11px;
+        font-weight: 700;
+    }
+
+    .reminders-page .agenda-group + .agenda-group {
+        margin-top: 17px;
+        padding-top: 16px;
+        border-top: 1px solid #f0f1f5;
+    }
+
+    .reminders-page .agenda-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    .reminders-page .agenda-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 12px;
+        font-weight: 750;
+    }
+
+    .reminders-page .agenda-heading i {
+        color: var(--primary);
+        font-size: 14px;
+    }
+
+    .reminders-page .count-badge {
+        flex-shrink: 0;
+        padding: 4px 7px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        color: #697386;
+        background: #f9fafc;
+        font-size: 10px;
+        font-weight: 650;
+    }
+
+    .reminders-page .agenda-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 10px 9px;
+        border-radius: 7px;
+        color: var(--text-main);
+        text-decoration: none;
+        transition: background .15s;
+    }
+
+    .reminders-page .agenda-item:hover {
+        background: #f7f8fc;
+    }
+
+    .reminders-page .agenda-item-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        min-width: 0;
+        font-size: 11px;
+        font-weight: 550;
+        line-height: 1.65;
+        overflow-wrap: anywhere;
+    }
+
+    .reminders-page .agenda-item-title i {
+        color: #939caf;
+        font-size: 13px;
+        margin-top: 2px;
+        flex-shrink: 0;
+    }
+
+    .reminders-page .agenda-date {
+        flex-shrink: 0;
+        color: var(--text-muted);
+        font-size: 10px;
+        line-height: 1.5;
+        white-space: nowrap;
+    }
+
+    .reminders-page .agenda-empty {
+        padding: 9px;
+        color: #929bad;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+
+    @media (max-width: 991.98px) {
+        .reminders-page .content-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .reminders-page .content-column {
+            gap: 15px;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .reminders-page {
+            padding-bottom: 24px;
+        }
+
+        .reminders-page .page-heading {
+            font-size: 20px;
+        }
+
+        .reminders-page .page-description {
+            max-width: 280px;
+            font-size: 12px;
+        }
+
+        .reminders-page .hero-card {
+            padding: 21px 18px;
+            border-radius: 11px;
+        }
+
+        .reminders-page .hero-title {
+            font-size: 18px;
+        }
+
+        .reminders-page .hero-description {
+            font-size: 11px;
+        }
+
+        .reminders-page .stats-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .reminders-page .stat-card {
+            padding: 13px;
+        }
+
+        .reminders-page .stat-card:last-child {
+            grid-column: 1 / -1;
+        }
+
+        .reminders-page .stat-top {
+            margin-bottom: 10px;
+        }
+
+        .reminders-page .stat-number {
+            font-size: 24px;
+        }
+
+        .reminders-page .stat-label {
+            font-size: 11px;
+        }
+
+        .reminders-page .stat-note {
+            font-size: 10px;
+        }
+
+        .reminders-page .panel {
+            padding: 16px;
+            border-radius: 10px;
+        }
+
+        .reminders-page .section-heading {
+            margin-bottom: 16px;
+        }
+
+        .reminders-page .task-link-hint {
+            display: none;
+        }
+
+        .reminders-page .agenda-item {
+            align-items: flex-start;
+            gap: 8px;
+            padding: 10px 5px;
+        }
+
+        .reminders-page .agenda-item-title {
+            font-size: 11px;
+        }
+
+        .reminders-page .agenda-date {
+            font-size: 9px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .reminders-page *,
+        .reminders-page *::before,
+        .reminders-page *::after {
+            transition: none !important;
+        }
+    }
+</style>
+
+<div class="container py-4 reminders-page">
+
+    <!-- Page heading -->
+    <div class="d-flex justify-content-between align-items-center gap-3 mb-4">
+        <div class="min-w-0">
+            <div class="eyebrow">TaskFlow / Preferensi</div>
+            <h1 class="page-heading">Pengingat Tugas</h1>
+            <p class="page-description">
+                Kelola pengingat dan pantau deadline tugasmu.
+            </p>
+        </div>
+
+        <a href="/tasks" class="back-button">
+            <i class="bi bi-arrow-left"></i>
+            <span class="d-none d-sm-inline">Daftar tugas</span>
+            <span class="d-sm-none">Kembali</span>
+        </a>
+    </div>
+
+    <!-- Hero -->
+    <section class="hero-card mb-4">
+        <div class="position-relative" style="z-index: 1;">
+            <div class="hero-label">
+                <i class="bi bi-bell"></i>
+                PUSAT PENGINGAT
+            </div>
+
+            <h2 class="hero-title">Deadline lebih teratur.</h2>
+            <p class="hero-description">
+                Atur jadwal pengingat sebelum batas pengumpulan.
+                Tetap terorganisir dan fokus menyelesaikan tugas tepat waktu.
+            </p>
+        </div>
+    </section>
+
+    <!-- Statistics -->
+    <div class="stats-grid mb-4">
+
+        <div class="stat-card">
+            <div class="stat-top">
+                <span class="stat-label">Total tugas</span>
+                <span class="stat-icon icon-purple">
+                    <i class="bi bi-list-check"></i>
+                </span>
+            </div>
+            <div class="stat-number"><%= summary.total %></div>
+            <div class="stat-note">Semua tugas tercatat</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-top">
+                <span class="stat-label">Belum selesai</span>
+                <span class="stat-icon icon-orange">
+                    <i class="bi bi-hourglass-split"></i>
+                </span>
+            </div>
+            <div class="stat-number"><%= summary.unfinished %></div>
+            <div class="stat-note">Masih perlu dikerjakan</div>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-top">
+                <span class="stat-label">Terlambat</span>
+                <span class="stat-icon icon-red">
+                    <i class="bi bi-calendar-x"></i>
+                </span>
+            </div>
+            <div class="stat-number"><%= summary.overdue %></div>
+            <div class="stat-note">Deadline telah terlewati</div>
+        </div>
+
+    </div>
+
+    <!-- Main content -->
+    <div class="content-grid">
+
+        <!-- Reminder preferences -->
+        <div class="content-column">
+            <section class="panel">
+                <div class="section-heading">
+                    <span class="section-icon icon-purple">
+                        <i class="bi bi-sliders"></i>
+                    </span>
+                    <div>
+                        <h2 class="section-title">Pengaturan pengingat</h2>
+                        <p class="section-description">
+                            Pilih waktu pengingat yang kamu butuhkan.
+                        </p>
+                    </div>
+                </div>
+
+                <form method="post" action="/reminders">
+                    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+                    <div class="reminder-options">
+                        <% windows.forEach(day => { %>
+                            <label class="reminder-option">
+                                <span class="day-badge">H-<%= day %></span>
+
+                                <span class="flex-grow-1">
+                                    <span class="option-title">
+                                        <%= day %> hari sebelumnya
+                                    </span>
+                                    <span class="option-description">
+                                        Sebelum deadline tugas
+                                    </span>
+                                </span>
+
+                                <input
+                                    class="reminder-checkbox"
+                                    type="checkbox"
+                                    name="days_before"
+                                    value="<%= day %>"
+                                    <%= selected[day] ? 'checked' : '' %>
+                                >
+                            </label>
+                        <% }) %>
+                    </div>
+
+                    <div class="info-note">
+                        <i class="bi bi-info-circle"></i>
+                        <span>
+                            Notifikasi bergantung pada scheduler, deadline,
+                            pengaturan yang aktif, dan ketersediaan layanan WhatsApp.
+                        </span>
+                    </div>
+
+                    <button type="submit" class="save-button">
+                        <i class="bi bi-check2-circle me-1"></i>
+                        Simpan pengaturan
+                    </button>
+                </form>
+            </section>
+        </div>
+
+        <!-- Deadline and agenda -->
+        <div class="content-column">
+
+            <!-- Next deadline -->
+            <section class="panel">
+                <div class="section-heading">
+                    <span class="section-icon icon-blue">
+                        <i class="bi bi-calendar-event"></i>
+                    </span>
+                    <div>
+                        <h2 class="section-title">Deadline berikutnya</h2>
+                        <p class="section-description">
+                            Tugas terdekat yang belum selesai.
+                        </p>
+                    </div>
+                </div>
+
+                <% if (summary.next) { %>
+                    <a
+                        href="/tasks/<%= summary.next.id %>"
+                        class="next-task"
+                    >
+                        <div class="next-task-title">
+                            <%= summary.next.title %>
+                        </div>
+
+                        <div class="task-meta mb-3">
+                            <span>
+                                <i class="bi bi-clock me-1"></i>
+                                <%= summary.next.deadline %>
+                            </span>
+                        </div>
+
+                        <div class="d-flex align-items-center flex-wrap gap-2">
+                            <span class="status-chip">
+                                <i class="bi bi-hourglass-split"></i>
+                                <%= summary.next.daysLeft %> hari lagi
+                            </span>
+
+                            <span class="task-link-hint">
+                                Lihat detail
+                                <i class="bi bi-arrow-up-right ms-1"></i>
+                            </span>
+                        </div>
+                    </a>
+                <% } else { %>
+                    <div class="empty-state">
+                        <span class="empty-icon">
+                            <i class="bi bi-calendar2-check"></i>
+                        </span>
+                        <div class="empty-title">
+                            Tidak ada deadline mendatang
+                        </div>
+                        <p class="empty-description">
+                            Semua siap? Tambahkan tugas untuk mengatur deadline berikutnya.
+                        </p>
+                        <a href="/tasks/new" class="empty-button">
+                            <i class="bi bi-plus-lg"></i>
+                            Tambah tugas
+                        </a>
+                    </div>
+                <% } %>
+            </section>
+
+            <!-- Reminder agenda -->
+            <section class="panel">
+                <div class="section-heading">
+                    <span class="section-icon icon-green">
+                        <i class="bi bi-calendar2-week"></i>
+                    </span>
+                    <div>
+                        <h2 class="section-title">Agenda deadline</h2>
+                        <p class="section-description">
+                            Ringkasan tugas berdasarkan jarak deadline.
+                        </p>
+                    </div>
+                </div>
+
+                <% windows.forEach(day => { %>
+                    <div class="agenda-group">
+                        <div class="agenda-header">
+                            <div class="agenda-heading">
+                                <i class="bi bi-calendar3"></i>
+                                Deadline H-<%= day %>
+                            </div>
+
+                            <span class="count-badge">
+                                <%= (summary.byDay[day] || []).length %> tugas
+                            </span>
+                        </div>
+
+                        <% if ((summary.byDay[day] || []).length > 0) { %>
+                            <% summary.byDay[day].forEach(item => { %>
+                                <a
+                                    href="/tasks/<%= item.id %>"
+                                    class="agenda-item"
+                                >
+                                    <span class="agenda-item-title">
+                                        <i class="bi bi-file-earmark-text"></i>
+                                        <span><%= item.title %></span>
+                                    </span>
+
+                                    <span class="agenda-date">
+                                        <%= formatDate(item.deadline) %>
+                                    </span>
+                                </a>
+                            <% }) %>
+                        <% } else { %>
+                            <div class="agenda-empty">
+                                Belum ada tugas pada rentang deadline ini.
+                            </div>
+                        <% } %>
+                    </div>
+                <% }) %>
+            </section>
+
+        </div>
+    </div>
+</div>
+
+<%- include('partials/foot') %>

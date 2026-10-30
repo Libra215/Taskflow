@@ -1,0 +1,317 @@
+
+<%- include('partials/head', { title: 'Verifikasi WhatsApp' }) %>
+
+<style>
+    .verify-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 32px 16px;
+        background:
+            radial-gradient(ellipse at top left, rgba(99,102,241,.10), transparent 42%),
+            radial-gradient(ellipse at bottom right, rgba(79,70,229,.08), transparent 40%),
+            #f8fafc;
+    }
+
+    .verify-card {
+        width: 100%;
+        max-width: 450px;
+        padding: 34px;
+        border: 1px solid #e8eaf2;
+        border-radius: 24px;
+        background: #fff;
+        box-shadow: 0 24px 65px rgba(15,23,42,.08);
+        animation: verifyFadeIn .45s ease both;
+    }
+
+    @keyframes verifyFadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .verify-logo {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 66px;
+        height: 66px;
+        margin: 0 auto 18px;
+        border-radius: 20px;
+        background: linear-gradient(135deg, #16a34a, #4ade80);
+        color: #fff;
+        font-size: 30px;
+        box-shadow: 0 10px 24px rgba(22,163,74,.18);
+    }
+
+    .verify-title {
+        color: #0f172a;
+        text-align: center;
+        font-size: 25px;
+        font-weight: 800;
+        margin-bottom: 10px;
+    }
+
+    .verify-description {
+        color: #64748b;
+        text-align: center;
+        font-size: 14px;
+        line-height: 1.7;
+        margin-bottom: 22px;
+    }
+
+    .verify-phone {
+        display: block;
+        margin-top: 6px;
+        color: #15803d;
+        font-weight: 700;
+    }
+
+    .verify-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .verify-input {
+        width: 100%;
+        min-height: 56px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        color: #0f172a;
+        text-align: center;
+        letter-spacing: 10px;
+        font-size: 25px;
+        font-weight: 800;
+        outline: none;
+        padding: 10px;
+        transition: .2s ease;
+    }
+
+    .verify-input:focus {
+        border-color: #818cf8;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99,102,241,.11);
+    }
+
+    .verify-button,
+    .verify-resend {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        width: 100%;
+        min-height: 48px;
+        padding: 12px;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 700;
+        transition: .2s ease;
+    }
+
+    .verify-button {
+        margin-top: 18px;
+        border: 0;
+        color: #fff;
+        background: linear-gradient(135deg, #4f46e5, #6366f1);
+        cursor: pointer;
+    }
+
+    .verify-button:hover:not(:disabled) {
+        background: linear-gradient(135deg, #4338ca, #4f46e5);
+        transform: translateY(-1px);
+    }
+
+    .verify-resend {
+        margin-top: 12px;
+        border: 1px solid #c7d2fe;
+        background: #eef2ff;
+        color: #4338ca;
+        cursor: pointer;
+    }
+
+    .verify-resend:hover:not(:disabled) {
+        background: #e0e7ff;
+    }
+
+    .verify-button:disabled,
+    .verify-resend:disabled {
+        opacity: .6;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    .countdown-note {
+        min-height: 18px;
+        margin-top: 8px;
+        color: #64748b;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .verify-alert {
+        border: 0;
+        border-radius: 12px;
+        font-size: 13px;
+        line-height: 1.6;
+    }
+
+    .verify-footer {
+        margin-top: 22px;
+        color: #94a3b8;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    @media (max-width: 480px) {
+        .verify-card {
+            padding: 27px 22px;
+        }
+
+        .verify-title {
+            font-size: 23px;
+        }
+    }
+</style>
+
+<div class="verify-page">
+    <div class="verify-card">
+
+        <div class="verify-logo">
+            <i class="bi bi-whatsapp"></i>
+        </div>
+
+        <h1 class="verify-title">Verifikasi WhatsApp</h1>
+
+        <p class="verify-description">
+            Masukkan kode OTP 6 digit yang dikirim ke WhatsApp kamu
+            untuk menyelesaikan pendaftaran.
+
+            <span class="verify-phone">
+                <i class="bi bi-telephone me-1"></i>
+                <%= whatsapp %>
+            </span>
+        </p>
+
+        <% if (typeof flash !== 'undefined' && flash && flash.m) {
+            const alertType = ['success', 'danger', 'warning', 'info'].includes(flash.t)
+                ? flash.t
+                : 'info';
+        %>
+            <div class="alert alert-<%= alertType %> alert-dismissible fade show verify-alert"
+                 role="alert"
+                 aria-live="polite">
+
+                <i class="bi <%= alertType === 'success'
+                    ? 'bi-check-circle-fill'
+                    : alertType === 'danger'
+                    ? 'bi-exclamation-triangle-fill'
+                    : alertType === 'warning'
+                    ? 'bi-exclamation-circle-fill'
+                    : 'bi-info-circle-fill' %> me-1"></i>
+
+                <%= flash.m %>
+
+                <button type="button"
+                        class="btn-close"
+                        data-bs-dismiss="alert"
+                        aria-label="Tutup"></button>
+            </div>
+        <% } %>
+
+        <!-- FORM VERIFIKASI OTP -->
+        <form id="verifyForm" method="post" action="/register/verify">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+
+            <label class="verify-label" for="otp">
+                Kode OTP 6 Digit
+            </label>
+
+            <input
+                class="verify-input"
+                id="otp"
+                name="otp"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]{6}"
+                minlength="6"
+                maxlength="6"
+                autocomplete="one-time-code"
+                placeholder="••••••"
+                aria-label="Kode OTP enam digit"
+                aria-describedby="otpHelp"
+                required
+            >
+
+            <div id="otpHelp" class="form-text text-center mt-2">
+                Pastikan kode yang kamu masukkan benar.
+            </div>
+
+            <button id="verifyButton"
+                    type="submit"
+                    class="verify-button">
+
+                <i class="bi bi-shield-check"></i>
+                <span>Verifikasi dan Buat Akun</span>
+            </button>
+        </form>
+
+        <!-- FORM KIRIM ULANG OTP -->
+        
+        <!-- FORM KIRIM ULANG OTP -->
+        <form id="resendForm" method="post" action="/register/resend-otp">
+            <input type="hidden" name="_csrf" value="<%= csrfToken %>">
+        
+            <button id="resendButton"
+                    type="submit"
+                    class="verify-resend">
+                <i id="resendIcon" class="bi bi-arrow-clockwise"></i>
+                <span id="resendText">Kirim Ulang OTP</span>
+            </button>
+        
+            <div class="countdown-note" role="status">
+                <i class="bi bi-info-circle me-1"></i>
+                Pengiriman ulang OTP memiliki jeda 60 detik.
+                Jika belum waktunya, silakan tunggu sebelum mencoba kembali.
+            </div>
+        </form>
+        
+        
+        <div class="text-center mt-3">
+            <a href="/register" class="text-decoration-none small">
+                <i class="bi bi-arrow-left me-1"></i>
+                Kembali ke pendaftaran
+            </a>
+        </div>
+
+        <div class="verify-footer">
+            <i class="bi bi-shield-check me-1"></i>
+            &copy; 2026 Beckend-API. Secure Registration.
+        </div>
+
+    </div>
+</div>
+
+
+<script>
+(function () {
+    const form = document.getElementById('resendForm');
+    const button = document.getElementById('resendButton');
+    const icon = document.getElementById('resendIcon');
+    const text = document.getElementById('resendText');
+
+    if (!form || !button || !icon || !text) return;
+
+    form.addEventListener('submit', function () {
+        button.disabled = true;
+        icon.className = 'bi bi-arrow-repeat';
+        text.textContent = 'Memproses permintaan...';
+    });
+})();
+</script>
+
+
+<%- include('partials/foot') %>

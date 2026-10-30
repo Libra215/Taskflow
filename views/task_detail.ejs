@@ -1,0 +1,843 @@
+
+<%- include('partials/head', { title: t.title }) %>
+
+<style>
+    .task-detail-page {
+        --td-primary: #4f46e5;
+        --td-border: #e8eaf2;
+        --td-muted: #737991;
+        max-width: 1080px;
+        margin: 0 auto;
+        color: #20243a;
+        animation: tdEnter .45s ease both;
+    }
+
+    @keyframes tdEnter {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-detail-page .text-muted {
+        color: var(--td-muted) !important;
+    }
+
+    .td-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: #69718a;
+        font-size: .86rem;
+        font-weight: 650;
+        text-decoration: none;
+        transition: color .2s ease;
+    }
+
+    .td-back:hover {
+        color: var(--td-primary);
+    }
+
+    .td-card {
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid var(--td-border);
+        border-radius: 20px;
+        box-shadow: 0 8px 30px rgba(30, 41, 59, .045);
+    }
+
+    .td-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 30px;
+        background: linear-gradient(135deg, #f8faff 0%, #fff 60%, #f0f2ff 100%);
+        border-bottom: 1px solid #edf0f6;
+    }
+
+    .td-hero::after {
+        content: "";
+        position: absolute;
+        width: 210px;
+        height: 210px;
+        right: -90px;
+        top: -125px;
+        border: 28px solid rgba(99, 102, 241, .055);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .td-hero-content {
+        position: relative;
+        z-index: 1;
+    }
+
+    .td-eyebrow {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        color: var(--td-primary);
+        font-size: .75rem;
+        font-weight: 750;
+        letter-spacing: .8px;
+        text-transform: uppercase;
+    }
+
+    .td-title {
+        margin: 0 0 16px;
+        color: #20243a;
+        font-size: clamp(1.5rem, 3.5vw, 2.15rem);
+        font-weight: 800;
+        line-height: 1.3;
+        letter-spacing: -.8px;
+        overflow-wrap: anywhere;
+    }
+
+    .td-chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .td-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 10px;
+        border: 1px solid #e6e8f0;
+        border-radius: 9px;
+        background: #fff;
+        color: #555d76;
+        font-size: .76rem;
+        font-weight: 600;
+        overflow-wrap: anywhere;
+    }
+
+    .td-chip-subject {
+        color: #4338ca;
+        border-color: #dfe3ff;
+        background: #eef2ff;
+    }
+
+    .td-chip-category {
+        color: #0369a1;
+        border-color: #d4efff;
+        background: #f0f9ff;
+    }
+
+    .td-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 7px 11px;
+        border-radius: 999px;
+        font-size: .76rem;
+        font-weight: 700;
+        border: 1px solid transparent;
+    }
+
+    .td-status-belum {
+        color: #a16207;
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+
+    .td-status-proses {
+        color: #1d4ed8;
+        background: #eff6ff;
+        border-color: #bfdbfe;
+    }
+
+    .td-status-selesai {
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .td-status-other {
+        color: #64748b;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+
+    .td-content {
+        padding: 28px;
+    }
+
+    .td-section-heading {
+        margin-bottom: 15px;
+        color: #252942;
+        font-size: .96rem;
+        font-weight: 750;
+        letter-spacing: -.2px;
+    }
+
+    .td-section-heading i {
+        margin-right: 8px;
+        color: var(--td-primary);
+    }
+
+    .td-info-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 13px;
+    }
+
+    .td-info {
+        min-width: 0;
+        padding: 17px;
+        border: 1px solid var(--td-border);
+        border-radius: 14px;
+        background: #fafbfe;
+        transition: border-color .2s ease, background .2s ease;
+    }
+
+    .td-info:hover {
+        border-color: #d9dcfb;
+        background: #f8f9ff;
+    }
+
+    .td-info-top {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        margin-bottom: 13px;
+    }
+
+    .td-info-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 35px;
+        height: 35px;
+        border-radius: 10px;
+        color: #4f46e5;
+        background: #eef2ff;
+        font-size: 1rem;
+    }
+
+    .td-info-label {
+        color: var(--td-muted);
+        font-size: .73rem;
+        font-weight: 650;
+    }
+
+    .td-info-value {
+        color: #252942;
+        font-size: .88rem;
+        font-weight: 700;
+        line-height: 1.5;
+        overflow-wrap: anywhere;
+    }
+
+    .td-info-caption {
+        margin-top: 5px;
+        color: var(--td-muted);
+        font-size: .73rem;
+        line-height: 1.5;
+    }
+
+    .td-priority {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 9px;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        font-size: .76rem;
+        font-weight: 700;
+    }
+
+    .td-priority-rendah {
+        color: #15803d;
+        background: #f0fdf4;
+        border-color: #bbf7d0;
+    }
+
+    .td-priority-sedang {
+        color: #a16207;
+        background: #fffbeb;
+        border-color: #fde68a;
+    }
+
+    .td-priority-tinggi {
+        color: #b91c1c;
+        background: #fef2f2;
+        border-color: #fecaca;
+    }
+
+    .td-priority-other {
+        color: #64748b;
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+
+    .td-section {
+        margin-top: 28px;
+    }
+
+    .td-text-box {
+        padding: 18px;
+        color: #4c536b;
+        background: #fafbfe;
+        border: 1px solid var(--td-border);
+        border-radius: 13px;
+        font-size: .88rem;
+        line-height: 1.85;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .td-note-box {
+        background: #fffbeb;
+        border-color: #f4e5b3;
+    }
+
+    .td-note-heading i {
+        color: #d97706;
+    }
+
+    .td-attachment {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        min-width: 0;
+        padding: 17px;
+        background: #fafbff;
+        border: 1px solid var(--td-border);
+        border-radius: 14px;
+    }
+
+    .td-file-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 48px;
+        height: 48px;
+        color: #4f46e5;
+        background: #eef2ff;
+        border-radius: 13px;
+        font-size: 1.4rem;
+    }
+
+    .td-file-info {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .td-file-name {
+        display: block;
+        color: #252942;
+        font-size: .86rem;
+        font-weight: 700;
+        overflow-wrap: anywhere;
+    }
+
+    .td-file-meta {
+        margin-top: 6px;
+        color: var(--td-muted);
+        font-size: .74rem;
+        line-height: 1.6;
+        overflow-wrap: anywhere;
+    }
+
+    .td-download {
+        display: inline-flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        padding: 9px 13px;
+        border: 1px solid #c7d2fe;
+        border-radius: 10px;
+        background: #eef2ff;
+        color: #4338ca;
+        font-size: .8rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .td-download:hover {
+        background: #e0e7ff;
+        color: #3730a3;
+    }
+
+    .td-actions {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 14px;
+        margin-top: 30px;
+        padding-top: 23px;
+        border-top: 1px solid #edf0f6;
+    }
+
+    .td-actions-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 9px;
+    }
+
+    .td-action-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 42px;
+        padding: 10px 15px;
+        border-radius: 10px;
+        font-size: .82rem;
+        font-weight: 700;
+        text-decoration: none;
+        transition: .2s ease;
+    }
+
+    .td-btn-success {
+        border: 1px solid #16a34a;
+        color: #fff;
+        background: #16a34a;
+    }
+
+    .td-btn-success:hover {
+        color: #fff;
+        background: #15803d;
+        transform: translateY(-1px);
+    }
+
+    .td-btn-edit {
+        border: 1px solid #d9dcfb;
+        color: #4338ca;
+        background: #f5f6ff;
+    }
+
+    .td-btn-edit:hover {
+        color: #3730a3;
+        background: #eef2ff;
+    }
+
+    .td-btn-delete {
+        border: 1px solid #fecaca;
+        color: #b91c1c;
+        background: #fff;
+        cursor: pointer;
+    }
+
+    .td-btn-delete:hover {
+        color: #991b1b;
+        background: #fef2f2;
+    }
+
+    .td-footer-note {
+        margin-top: 17px;
+        color: var(--td-muted);
+        font-size: .75rem;
+        text-align: center;
+    }
+
+    @media (max-width: 767.98px) {
+        .td-hero {
+            padding: 23px 20px;
+        }
+
+        .td-content {
+            padding: 20px;
+        }
+
+        .td-info-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .td-info {
+            padding: 14px;
+        }
+
+        .td-actions {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .td-actions-group {
+            width: 100%;
+        }
+
+        .td-actions-group form {
+            flex: 1;
+        }
+
+        .td-actions-group .td-action-btn {
+            width: 100%;
+        }
+
+        .td-actions > form,
+        .td-actions > form button {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .td-hero {
+            padding: 20px 16px;
+        }
+
+        .td-content {
+            padding: 17px 14px;
+        }
+
+        .td-info-grid {
+            gap: 8px;
+        }
+
+        .td-info {
+            padding: 12px;
+        }
+
+        .td-info-value {
+            font-size: .81rem;
+        }
+
+        .td-info-top {
+            align-items: flex-start;
+            gap: 7px;
+        }
+
+        .td-attachment {
+            align-items: flex-start;
+            flex-wrap: wrap;
+            padding: 14px;
+        }
+
+        .td-file-info {
+            flex-basis: calc(100% - 65px);
+        }
+
+        .td-download {
+            width: 100%;
+        }
+
+        .td-actions-group {
+            flex-direction: column;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .task-detail-page,
+        .task-detail-page * {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+</style>
+
+<div class="container py-4 py-lg-5 task-detail-page">
+
+    <!-- Back navigation -->
+    <a href="/tasks" class="td-back">
+        <i class="bi bi-arrow-left"></i>
+        Kembali ke daftar tugas
+    </a>
+
+    <%
+        const tdStatusMap = {
+            belum: {
+                label: 'Belum dikerjakan',
+                icon: 'bi-clock',
+                style: 'td-status-belum'
+            },
+            proses: {
+                label: 'Sedang dikerjakan',
+                icon: 'bi-arrow-repeat',
+                style: 'td-status-proses'
+            },
+            selesai: {
+                label: 'Selesai',
+                icon: 'bi-check-circle-fill',
+                style: 'td-status-selesai'
+            }
+        };
+
+        const tdStatus = tdStatusMap[t.status] || {
+            label: t.status || 'Tidak diketahui',
+            icon: 'bi-info-circle',
+            style: 'td-status-other'
+        };
+
+        const tdPriorityMap = {
+            rendah: {
+                label: 'Rendah',
+                icon: 'bi-flag',
+                style: 'td-priority-rendah'
+            },
+            sedang: {
+                label: 'Sedang',
+                icon: 'bi-flag',
+                style: 'td-priority-sedang'
+            },
+            tinggi: {
+                label: 'Tinggi',
+                icon: 'bi-flag-fill',
+                style: 'td-priority-tinggi'
+            }
+        };
+
+        const tdPriority = tdPriorityMap[String(t.priority || '').toLowerCase()] || {
+            label: t.priority || 'Tidak diatur',
+            icon: 'bi-flag',
+            style: 'td-priority-other'
+        };
+    %>
+
+    <article class="td-card">
+
+        <!-- Task header -->
+        <header class="td-hero">
+            <div class="td-hero-content">
+
+                <div class="td-eyebrow">
+                    <i class="bi bi-file-earmark-text"></i>
+                    Detail tugas
+                </div>
+
+                <h1 class="td-title"><%= t.title %></h1>
+
+                <div class="td-chip-list mb-3">
+                    <% if (t.subject) { %>
+                        <span class="td-chip td-chip-subject">
+                            <i class="bi bi-journal-text"></i>
+                            <%= t.subject %>
+                        </span>
+                    <% } %>
+
+                    <% if (t.teacher) { %>
+                        <span class="td-chip">
+                            <i class="bi bi-person-badge"></i>
+                            <%= t.teacher %>
+                        </span>
+                    <% } %>
+
+                    <% if (t.cat) { %>
+                        <span class="td-chip td-chip-category">
+                            <i class="bi bi-tag"></i>
+                            <%= t.cat %>
+                        </span>
+                    <% } %>
+                </div>
+
+                <span class="td-status <%= tdStatus.style %>">
+                    <i class="bi <%= tdStatus.icon %>"></i>
+                    <%= tdStatus.label %>
+                </span>
+            </div>
+        </header>
+
+        <div class="td-content">
+
+            <!-- Main information -->
+            <section>
+                <h2 class="td-section-heading">
+                    <i class="bi bi-info-circle"></i>
+                    Informasi tugas
+                </h2>
+
+                <div class="td-info-grid">
+
+                    <div class="td-info">
+                        <div class="td-info-top">
+                            <div class="td-info-icon">
+                                <i class="bi bi-calendar-event"></i>
+                            </div>
+                            <span class="td-info-label">Deadline</span>
+                        </div>
+
+                        <div class="td-info-value">
+                            <%= t.deadline || 'Belum ditentukan' %>
+                        </div>
+
+                        <div class="td-info-caption">Batas pengumpulan tugas</div>
+                    </div>
+
+                    <div class="td-info">
+                        <div class="td-info-top">
+                            <div class="td-info-icon">
+                                <i class="bi bi-flag"></i>
+                            </div>
+                            <span class="td-info-label">Prioritas</span>
+                        </div>
+
+                        <div>
+                            <span class="td-priority <%= tdPriority.style %>">
+                                <i class="bi <%= tdPriority.icon %>"></i>
+                                <%= tdPriority.label %>
+                            </span>
+                        </div>
+
+                        <div class="td-info-caption">Tingkat kepentingan tugas</div>
+                    </div>
+
+                    <div class="td-info">
+                        <div class="td-info-top">
+                            <div class="td-info-icon">
+                                <i class="bi bi-check2-circle"></i>
+                            </div>
+                            <span class="td-info-label">Status</span>
+                        </div>
+
+                        <div class="td-info-value"><%= tdStatus.label %></div>
+                        <div class="td-info-caption">Status pengerjaan saat ini</div>
+                    </div>
+
+                    <% if (t.subject) { %>
+                        <div class="td-info">
+                            <div class="td-info-top">
+                                <div class="td-info-icon">
+                                    <i class="bi bi-journal-bookmark"></i>
+                                </div>
+                                <span class="td-info-label">Mata pelajaran</span>
+                            </div>
+
+                            <div class="td-info-value"><%= t.subject %></div>
+                        </div>
+                    <% } %>
+
+                    <% if (t.teacher) { %>
+                        <div class="td-info">
+                            <div class="td-info-top">
+                                <div class="td-info-icon">
+                                    <i class="bi bi-person-workspace"></i>
+                                </div>
+                                <span class="td-info-label">Guru pengampu</span>
+                            </div>
+
+                            <div class="td-info-value"><%= t.teacher %></div>
+                        </div>
+                    <% } %>
+
+                    <% if (t.cat) { %>
+                        <div class="td-info">
+                            <div class="td-info-top">
+                                <div class="td-info-icon">
+                                    <i class="bi bi-bookmark"></i>
+                                </div>
+                                <span class="td-info-label">Kategori</span>
+                            </div>
+
+                            <div class="td-info-value"><%= t.cat %></div>
+                        </div>
+                    <% } %>
+
+                </div>
+            </section>
+
+            <!-- Description -->
+            <section class="td-section">
+                <h2 class="td-section-heading">
+                    <i class="bi bi-card-text"></i>
+                    Deskripsi tugas
+                </h2>
+
+                <div class="td-text-box"><%= t.description || 'Belum ada deskripsi untuk tugas ini.' %></div>
+            </section>
+
+            <!-- Personal notes -->
+            <% if (t.notes) { %>
+                <section class="td-section">
+                    <h2 class="td-section-heading td-note-heading">
+                        <i class="bi bi-sticky"></i>
+                        Catatan pribadi
+                    </h2>
+
+                    <div class="td-text-box td-note-box"><%= t.notes %></div>
+                </section>
+            <% } %>
+
+            <!-- Attachment -->
+            <% if (att) { %>
+                <section class="td-section">
+                    <h2 class="td-section-heading">
+                        <i class="bi bi-paperclip"></i>
+                        Lampiran file
+                    </h2>
+
+                    <div class="td-attachment">
+                        <div class="td-file-icon">
+                            <i class="bi bi-file-earmark-arrow-down"></i>
+                        </div>
+
+                        <div class="td-file-info">
+                            <span class="td-file-name">
+                                <%= att.original_name %>
+                            </span>
+
+                            <div class="td-file-meta">
+                                <i class="bi bi-hdd me-1"></i>
+
+                                <%= att.size_bytes >= 1048576
+                                    ? (att.size_bytes / 1048576).toFixed(2) + ' MB'
+                                    : Math.max(1, Math.round(att.size_bytes / 1024)) + ' KB' %>
+
+                                <% if (att.uploaded_at) { %>
+                                    <span class="mx-1">·</span>
+                                    <i class="bi bi-clock me-1"></i>
+                                    <%= att.uploaded_at %>
+                                <% } %>
+                            </div>
+                        </div>
+
+                        <a href="/files/<%= att.id %>" class="td-download">
+                            <i class="bi bi-download"></i>
+                            Unduh lampiran
+                        </a>
+                    </div>
+                </section>
+            <% } %>
+
+            <!-- Actions -->
+            <div class="td-actions">
+                <div class="td-actions-group">
+
+                    <% if (t.status !== 'selesai') { %>
+                        <form method="post" action="/tasks/<%= t.id %>/status">
+                            <input type="hidden" name="_csrf" value="<%= csrf %>">
+                            <input type="hidden" name="status" value="selesai">
+
+                            <button type="submit" class="td-action-btn td-btn-success">
+                                <i class="bi bi-check-lg"></i>
+                                Tandai selesai
+                            </button>
+                        </form>
+                    <% } %>
+
+                    <a class="td-action-btn td-btn-edit"
+                       href="/tasks/<%= t.id %>/edit">
+                        <i class="bi bi-pencil-square"></i>
+                        Edit tugas
+                    </a>
+                </div>
+
+                <form method="post"
+                      action="/tasks/<%= t.id %>/delete"
+                      data-confirm="Hapus tugas ini? Tindakan ini tidak dapat dibatalkan.">
+
+                    <input type="hidden" name="_csrf" value="<%= csrf %>">
+
+                    <button type="submit" class="td-action-btn td-btn-delete">
+                        <i class="bi bi-trash3"></i>
+                        Hapus tugas
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </article>
+
+    <div class="td-footer-note">
+        <i class="bi bi-shield-check me-1"></i>
+        Pastikan tugas selesai sebelum batas pengumpulan.
+    </div>
+</div>
+
+<%- include('partials/foot') %>

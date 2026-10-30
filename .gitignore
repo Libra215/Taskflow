@@ -1,0 +1,41 @@
+
+# Dependencies
+node_modules/
+package-lock.json
+taskflow.zip
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Runtime
+pids/
+*.pid
+
+# Cache
+.cache/
+.npm/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+
+# Session dan kredensial
+auth_info/
+sessions/
+tokens/
+
+# Database produksi dan backup
+*.sql
+*.sqlite
+*.db
+*.dump

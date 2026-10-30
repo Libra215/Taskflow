@@ -1,0 +1,572 @@
+
+<%- include('partials/head', { title: 'Daftar Akun Baru' }) %>
+
+<style>
+    @keyframes registerFadeIn {
+        from { opacity: 0; transform: translateY(16px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .register-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px 16px;
+        background:
+            radial-gradient(ellipse at top left, rgba(99,102,241,.10), transparent 42%),
+            radial-gradient(ellipse at bottom right, rgba(79,70,229,.08), transparent 40%),
+            #f8fafc;
+    }
+
+    .register-wrapper {
+        width: 100%;
+        max-width: 490px;
+        animation: registerFadeIn .55s ease both;
+    }
+
+    .register-card {
+        overflow: hidden;
+        border: 1px solid #e8eaf2;
+        border-radius: 24px;
+        background: #fff;
+        box-shadow: 0 24px 65px rgba(15,23,42,.08);
+    }
+
+    .register-header {
+        padding: 32px 32px 24px;
+        text-align: center;
+    }
+
+    .register-logo {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 64px;
+        height: 64px;
+        margin-bottom: 18px;
+        color: #fff;
+        font-size: 27px;
+        border-radius: 20px;
+        background: linear-gradient(135deg,#4f46e5,#818cf8);
+        box-shadow: 0 10px 24px rgba(79,70,229,.22);
+    }
+
+    .register-title {
+        margin: 0 0 8px;
+        color: #0f172a;
+        font-size: 26px;
+        font-weight: 800;
+        letter-spacing: -.7px;
+    }
+
+    .register-subtitle {
+        max-width: 330px;
+        margin: 0 auto;
+        color: #64748b;
+        font-size: 14px;
+        line-height: 1.7;
+    }
+
+    .register-body {
+        padding: 0 32px 30px;
+    }
+
+    .register-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .register-label .optional,
+    .register-password-note {
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 500;
+    }
+
+    .register-input-group {
+        display: flex;
+        align-items: stretch;
+        width: 100%;
+        overflow: hidden;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        background: #f8fafc;
+        transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+
+    .register-input-group:focus-within {
+        border-color: #818cf8;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99,102,241,.11);
+    }
+
+    .register-input-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 45px;
+        flex-shrink: 0;
+        color: #818cf8;
+        font-size: 17px;
+    }
+
+    .register-input {
+        width: 100%;
+        min-width: 0;
+        min-height: 46px;
+        padding: 11px 13px 11px 0;
+        border: 0;
+        outline: 0;
+        color: #0f172a;
+        background: transparent;
+        font-size: 14px;
+        box-shadow: none !important;
+    }
+
+    .register-input::placeholder {
+        color: #a0aabd;
+    }
+
+    .register-input-group:focus-within .register-input-icon {
+        color: #4f46e5;
+    }
+
+    .register-select,
+    .register-institution {
+        width: 100%;
+        min-height: 46px;
+        padding: 10px 13px;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        outline: none;
+        color: #334155;
+        background-color: #f8fafc;
+        font-size: 13px;
+        transition: border-color .2s, box-shadow .2s, background .2s;
+    }
+
+    .register-select:focus,
+    .register-institution:focus {
+        border-color: #818cf8;
+        background-color: #fff;
+        box-shadow: 0 0 0 4px rgba(99,102,241,.11);
+    }
+
+    .register-field {
+        margin-bottom: 19px;
+    }
+
+    .register-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+        margin-bottom: 24px;
+    }
+
+    .register-submit {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        width: 100%;
+        min-height: 49px;
+        padding: 12px 18px;
+        border: 0;
+        border-radius: 13px;
+        color: #fff;
+        background: linear-gradient(135deg,#4f46e5,#6366f1);
+        font-size: 14px;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 8px 18px rgba(79,70,229,.18);
+        transition: transform .2s, box-shadow .2s, background .2s;
+    }
+
+    .register-submit:hover {
+        transform: translateY(-2px);
+        background: linear-gradient(135deg,#4338ca,#4f46e5);
+        box-shadow: 0 12px 24px rgba(79,70,229,.26);
+    }
+
+    .register-submit:disabled {
+        opacity: .7;
+        cursor: wait;
+        transform: none;
+    }
+
+    .register-captcha {
+        display: flex;
+        justify-content: center;
+        margin: 8px 0 20px;
+        min-height: 65px;
+    }
+
+    .register-captcha-note {
+        margin: 0 0 16px;
+        color: #64748b;
+        text-align: center;
+        font-size: 11px;
+        line-height: 1.6;
+    }
+
+    .register-divider {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin: 24px 0 18px;
+        color: #cbd5e1;
+        font-size: 11px;
+    }
+
+    .register-divider::before,
+    .register-divider::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: #e2e8f0;
+    }
+
+    .register-login {
+        margin: 0;
+        color: #64748b;
+        text-align: center;
+        font-size: 13px;
+    }
+
+    .register-login a {
+        color: #4f46e5;
+        font-weight: 700;
+        text-decoration: none;
+    }
+
+    .register-login a:hover {
+        color: #3730a3;
+        text-decoration: underline;
+    }
+
+    .register-footer {
+        margin-top: 22px;
+        color: #94a3b8;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .register-footer i {
+        margin-right: 5px;
+        color: #6366f1;
+    }
+
+    @media (max-width: 480px) {
+        .register-page {
+            padding: 24px 12px;
+        }
+
+        .register-header {
+            padding: 28px 22px 22px;
+        }
+
+        .register-body {
+            padding: 0 22px 25px;
+        }
+
+        .register-title {
+            font-size: 23px;
+        }
+
+        .register-row {
+            grid-template-columns: 1fr;
+            gap: 0;
+            margin-bottom: 20px;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .register-wrapper {
+            animation: none;
+        }
+
+        .register-submit,
+        .register-input-group,
+        .register-select,
+        .register-institution {
+            transition: none;
+        }
+    }
+</style>
+
+<div class="register-page">
+    <div class="register-wrapper">
+        <div class="register-card">
+
+            <div class="register-header">
+                <div class="register-logo">
+                    <i class="bi bi-person-plus-fill"></i>
+                </div>
+
+                <h1 class="register-title">Buat Akun Baru</h1>
+
+                <p class="register-subtitle">
+                    Mulai perjalanan akademik yang lebih teratur.
+                    Kelola tugas dan produktivitasmu bersama TaskFlow.
+                </p>
+            </div>
+
+            <div class="register-body">
+
+                <% if (typeof flash !== 'undefined' && flash) { %>
+                    <div
+                        class="alert alert-<%= flash.t === 'danger' ? 'danger' : flash.t === 'warning' ? 'warning' : 'success' %> alert-dismissible fade show"
+                        role="alert"
+                        style="border-radius:12px;font-size:13px;"
+                    >
+                        <%= flash.m %>
+
+                        <button
+                            type="button"
+                            class="btn-close"
+                            data-bs-dismiss="alert"
+                            aria-label="Tutup"
+                        ></button>
+                    </div>
+                <% } %>
+
+                <form
+                    id="registerForm"
+                    method="post"
+                    action="/register"
+                    class="needs-validation"
+                    novalidate
+                >
+                    <input
+                        type="hidden"
+                        name="_csrf"
+                        value="<%= csrfToken %>"
+                    >
+
+                    <div class="register-field">
+                        <label class="register-label" for="register-name">
+                            Nama Lengkap
+                        </label>
+
+                        <div class="register-input-group">
+                            <span class="register-input-icon">
+                                <i class="bi bi-person"></i>
+                            </span>
+
+                            <input
+                                id="register-name"
+                                class="register-input"
+                                type="text"
+                                name="name"
+                                required
+                                minlength="2"
+                                maxlength="100"
+                                autocomplete="name"
+                                placeholder="Masukkan nama lengkap"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="register-field">
+                        <label class="register-label" for="register-email">
+                            Email
+                        </label>
+
+                        <div class="register-input-group">
+                            <span class="register-input-icon">
+                                <i class="bi bi-envelope"></i>
+                            </span>
+
+                            <input
+                                id="register-email"
+                                class="register-input"
+                                type="email"
+                                name="email"
+                                required
+                                maxlength="190"
+                                autocomplete="email"
+                                placeholder="nama@email.com"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="register-field">
+                        <label class="register-label" for="register-whatsapp">
+                            Nomor WhatsApp
+                        </label>
+
+                        <div class="register-input-group">
+                            <span class="register-input-icon">
+                                <i class="bi bi-whatsapp"></i>
+                            </span>
+
+                            <input
+                                id="register-whatsapp"
+                                class="register-input"
+                                type="tel"
+                                name="whatsapp"
+                                required
+                                minlength="8"
+                                maxlength="25"
+                                autocomplete="tel"
+                                inputmode="tel"
+                                placeholder="Contoh: 081234567890"
+                            >
+                        </div>
+
+                        <small class="text-muted">
+                            Pastikan nomor aktif dan dapat menerima pesan WhatsApp.
+                        </small>
+                    </div>
+
+                    <div class="register-field">
+                        <label class="register-label" for="register-password">
+                            Password
+                            <span class="register-password-note">
+                                (minimal 8 karakter)
+                            </span>
+                        </label>
+
+                        <div class="register-input-group">
+                            <span class="register-input-icon">
+                                <i class="bi bi-lock"></i>
+                            </span>
+
+                            <input
+                                id="register-password"
+                                class="register-input"
+                                type="password"
+                                name="password"
+                                minlength="8"
+                                maxlength="72"
+                                required
+                                autocomplete="new-password"
+                                placeholder="Buat password yang kuat"
+                            >
+                        </div>
+                    </div>
+
+                    <div class="register-row">
+                        <div class="register-field mb-0">
+                            <label class="register-label" for="register-user-type">
+                                Saya adalah
+                            </label>
+
+                            <select
+                                class="register-select"
+                                id="register-user-type"
+                                name="user_type"
+                                required
+                            >
+                                <option value="mahasiswa">Mahasiswa</option>
+                                <option value="siswa">Siswa</option>
+                            </select>
+                        </div>
+
+                        <div class="register-field mb-0">
+                            <label class="register-label" for="register-institution">
+                                Institusi / Sekolah
+                                <span class="optional">(opsional)</span>
+                            </label>
+
+                            <input
+                                class="register-institution"
+                                id="register-institution"
+                                type="text"
+                                name="institution"
+                                maxlength="150"
+                                autocomplete="organization"
+                                placeholder="Nama institusi"
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Cloudflare Turnstile CAPTCHA -->
+                    <div class="register-captcha">
+                        <div
+                            class="cf-turnstile"
+                            data-sitekey="<%= typeof turnstileSiteKey !== 'undefined' ? turnstileSiteKey : '' %>"
+                            data-action="register"
+                            data-theme="light"
+                        ></div>
+                    </div>
+
+                    <p class="register-captcha-note">
+                        Selesaikan verifikasi keamanan sebelum membuat akun.
+                    </p>
+
+                    <button
+                        id="registerSubmit"
+                        type="submit"
+                        class="register-submit"
+                    >
+                        <i class="bi bi-whatsapp"></i>
+                        <span id="registerSubmitText">Daftar dan Kirim OTP</span>
+                        <i class="bi bi-arrow-right"></i>
+                    </button>
+                </form>
+
+                <div class="register-divider">ATAU</div>
+
+                <p class="register-login">
+                    Sudah punya akun?
+                    <a href="/login">Masuk di sini</a>
+                </p>
+            </div>
+        </div>
+
+        <div class="register-footer">
+            <i class="bi bi-shield-check"></i>
+            &copy; 2026 Beckend-API. Secure Registration.
+        </div>
+    </div>
+</div>
+
+<!-- Cloudflare Turnstile API: muat satu kali pada halaman ini -->
+<script
+    src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+    async
+    defer
+></script>
+
+<script>
+(function () {
+    const form = document.getElementById('registerForm');
+    const button = document.getElementById('registerSubmit');
+    const buttonText = document.getElementById('registerSubmitText');
+
+    if (!form || !button || !buttonText) return;
+
+    form.addEventListener('submit', function (event) {
+        // Validasi dasar browser.
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+            form.classList.add('was-validated');
+            return;
+        }
+
+        // Turnstile menambahkan token ke form secara otomatis.
+        // Backend tetap wajib memverifikasi token melalui Siteverify.
+        const captchaResponse = form.querySelector(
+            'input[name="cf-turnstile-response"]'
+        );
+
+        if (!captchaResponse || !captchaResponse.value) {
+            event.preventDefault();
+            alert('Silakan selesaikan verifikasi CAPTCHA terlebih dahulu.');
+            return;
+        }
+
+        // Cegah pengiriman formulir berulang.
+        button.disabled = true;
+        buttonText.textContent = 'Memproses pendaftaran...';
+    });
+})();
+</script>
+
+<%- include('partials/foot') %>

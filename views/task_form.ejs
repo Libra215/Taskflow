@@ -1,0 +1,774 @@
+
+<%- include('partials/head', { title: (t.id ? 'Edit' : 'Tambah') + ' Tugas' }) %>
+
+<style>
+    .task-form-page {
+        --tf-primary: #4f46e5;
+        --tf-border: #e8eaf2;
+        --tf-muted: #737991;
+        max-width: 1000px;
+        margin: 0 auto;
+        color: #20243a;
+        animation: tfEnter .45s ease both;
+    }
+
+    @keyframes tfEnter {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    .task-form-page .text-muted {
+        color: var(--tf-muted) !important;
+    }
+
+    .tf-back {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 20px;
+        color: #69718a;
+        font-size: .85rem;
+        font-weight: 650;
+        text-decoration: none;
+        transition: color .2s ease;
+    }
+
+    .tf-back:hover {
+        color: var(--tf-primary);
+    }
+
+    .tf-form-card {
+        overflow: hidden;
+        background: #fff;
+        border: 1px solid var(--tf-border);
+        border-radius: 20px;
+        box-shadow: 0 8px 30px rgba(30, 41, 59, .045);
+    }
+
+    .tf-form-hero {
+        position: relative;
+        overflow: hidden;
+        padding: 28px 30px;
+        color: #fff;
+        background: linear-gradient(120deg, #3730a3, #4f46e5 60%, #818cf8);
+    }
+
+    .tf-form-hero::after {
+        content: "";
+        position: absolute;
+        top: -100px;
+        right: -45px;
+        width: 210px;
+        height: 210px;
+        border: 28px solid rgba(255,255,255,.1);
+        border-radius: 50%;
+        pointer-events: none;
+    }
+
+    .tf-hero-content {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        gap: 17px;
+    }
+
+    .tf-hero-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 58px;
+        height: 58px;
+        border: 1px solid rgba(255,255,255,.24);
+        border-radius: 17px;
+        background: rgba(255,255,255,.13);
+        font-size: 1.6rem;
+    }
+
+    .tf-eyebrow {
+        margin-bottom: 6px;
+        color: rgba(255,255,255,.77);
+        font-size: .72rem;
+        font-weight: 750;
+        letter-spacing: 1px;
+        text-transform: uppercase;
+    }
+
+    .tf-hero-title {
+        margin: 0;
+        font-size: clamp(1.35rem, 3vw, 1.8rem);
+        font-weight: 800;
+        letter-spacing: -.5px;
+    }
+
+    .tf-hero-description {
+        margin: 7px 0 0;
+        color: rgba(255,255,255,.82);
+        font-size: .84rem;
+        line-height: 1.6;
+    }
+
+    .tf-form-body {
+        padding: 30px;
+    }
+
+    .tf-section {
+        margin-bottom: 29px;
+    }
+
+    .tf-section:last-of-type {
+        margin-bottom: 0;
+    }
+
+    .tf-section-heading {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+        margin-bottom: 19px;
+    }
+
+    .tf-section-icon {
+        display: flex;
+        flex-shrink: 0;
+        align-items: center;
+        justify-content: center;
+        width: 39px;
+        height: 39px;
+        color: var(--tf-primary);
+        background: #eef2ff;
+        border-radius: 12px;
+        font-size: 1.05rem;
+    }
+
+    .tf-section-title {
+        margin: 1px 0 5px;
+        color: #252942;
+        font-size: .94rem;
+        font-weight: 750;
+    }
+
+    .tf-section-description {
+        margin: 0;
+        color: var(--tf-muted);
+        font-size: .78rem;
+        line-height: 1.55;
+    }
+
+    .tf-field {
+        min-width: 0;
+    }
+
+    .tf-label {
+        display: block;
+        margin-bottom: 8px;
+        color: #414760;
+        font-size: .81rem;
+        font-weight: 700;
+    }
+
+    .tf-required {
+        color: #dc2626;
+    }
+
+    .tf-control,
+    .tf-select {
+        width: 100%;
+        min-height: 45px;
+        padding: 10px 13px;
+        border: 1px solid #e2e6ef;
+        border-radius: 10px;
+        background-color: #fafbfe;
+        color: #252942;
+        font-size: .86rem;
+        transition: border-color .2s ease, box-shadow .2s ease,
+                    background-color .2s ease;
+    }
+
+    .tf-control::placeholder {
+        color: #a0a6b7;
+    }
+
+    .tf-control:focus,
+    .tf-select:focus {
+        outline: none;
+        border-color: #a5b4fc;
+        background: #fff;
+        box-shadow: 0 0 0 4px rgba(99,102,241,.1);
+    }
+
+    .tf-control[type="file"] {
+        padding: 8px;
+    }
+
+    .tf-control[type="file"]::file-selector-button {
+        margin-right: 10px;
+        padding: 7px 11px;
+        color: #4338ca;
+        background: #eef2ff;
+        border: 0;
+        border-radius: 7px;
+        font-size: .78rem;
+        font-weight: 650;
+        cursor: pointer;
+    }
+
+    textarea.tf-control {
+        min-height: 100px;
+        resize: vertical;
+        line-height: 1.7;
+    }
+
+    textarea.tf-notes {
+        min-height: 85px;
+    }
+
+    .tf-help {
+        margin-top: 7px;
+        color: var(--tf-muted);
+        font-size: .74rem;
+        line-height: 1.6;
+    }
+
+    .tf-divider {
+        height: 1px;
+        margin: 26px 0;
+        background: #edf0f6;
+    }
+
+    .tf-file-panel {
+        padding: 17px;
+        border: 1px dashed #cbd5e1;
+        border-radius: 13px;
+        background: #fafbff;
+    }
+
+    .tf-file-heading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 13px;
+    }
+
+    .tf-file-heading-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 37px;
+        height: 37px;
+        flex-shrink: 0;
+        color: #4f46e5;
+        background: #eef2ff;
+        border-radius: 10px;
+    }
+
+    .tf-file-title {
+        margin: 0 0 4px;
+        color: #252942;
+        font-size: .84rem;
+        font-weight: 750;
+    }
+
+    .tf-file-description {
+        margin: 0;
+        color: var(--tf-muted);
+        font-size: .75rem;
+        line-height: 1.55;
+    }
+
+    .tf-form-footer {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 29px;
+        padding-top: 22px;
+        border-top: 1px solid #edf0f6;
+    }
+
+    .tf-footer-note {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        color: var(--tf-muted);
+        font-size: .75rem;
+    }
+
+    .tf-footer-actions {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+    }
+
+    .tf-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        min-height: 43px;
+        padding: 10px 17px;
+        border: 1px solid transparent;
+        border-radius: 10px;
+        font-size: .83rem;
+        font-weight: 700;
+        text-decoration: none;
+        cursor: pointer;
+        transition: .2s ease;
+    }
+
+    .tf-btn-cancel {
+        color: #596078;
+        background: #fff;
+        border-color: #e2e6ef;
+    }
+
+    .tf-btn-cancel:hover {
+        color: #252942;
+        background: #f8fafc;
+    }
+
+    .tf-btn-save {
+        color: #fff;
+        background: linear-gradient(120deg, #4f46e5, #6366f1);
+        box-shadow: 0 4px 10px rgba(79,70,229,.15);
+    }
+
+    .tf-btn-save:hover {
+        color: #fff;
+        background: linear-gradient(120deg, #4338ca, #4f46e5);
+        transform: translateY(-1px);
+        box-shadow: 0 7px 17px rgba(79,70,229,.22);
+    }
+
+    @media (max-width: 767.98px) {
+        .tf-form-hero {
+            padding: 23px 20px;
+        }
+
+        .tf-form-body {
+            padding: 23px 20px;
+        }
+
+        .tf-form-footer {
+            align-items: stretch;
+            flex-direction: column;
+        }
+
+        .tf-footer-actions {
+            display: grid;
+            grid-template-columns: 1fr 1.4fr;
+        }
+
+        .tf-footer-actions .tf-btn {
+            width: 100%;
+        }
+    }
+
+    @media (max-width: 420px) {
+        .tf-form-hero {
+            padding: 20px 16px;
+        }
+
+        .tf-form-body {
+            padding: 20px 15px;
+        }
+
+        .tf-hero-content {
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .tf-hero-icon {
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            font-size: 1.25rem;
+        }
+
+        .tf-footer-note {
+            align-items: flex-start;
+        }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .task-form-page,
+        .task-form-page * {
+            animation: none !important;
+            transition: none !important;
+        }
+    }
+</style>
+
+<div class="container py-4 py-lg-5 task-form-page">
+
+    <a href="/tasks" class="tf-back">
+        <i class="bi bi-arrow-left"></i>
+        Kembali ke daftar tugas
+    </a>
+
+    <%
+        const isEditing = Boolean(t.id);
+    %>
+
+    <div class="tf-form-card">
+
+        <!-- Header -->
+        <header class="tf-form-hero">
+            <div class="tf-hero-content">
+                <div class="tf-hero-icon">
+                    <i class="bi <%= isEditing ? 'bi-pencil-square' : 'bi-plus-lg' %>"></i>
+                </div>
+
+                <div>
+                    <div class="tf-eyebrow">
+                        TaskFlow · Manajemen tugas
+                    </div>
+
+                    <h1 class="tf-hero-title">
+                        <%= isEditing ? 'Edit Tugas' : 'Tambah Tugas Baru' %>
+                    </h1>
+
+                    <p class="tf-hero-description">
+                        <%= isEditing
+                            ? 'Perbarui informasi tugas agar tetap terorganisir.'
+                            : 'Susun detail tugas, tentukan prioritas, dan atur deadline.' %>
+                    </p>
+                </div>
+            </div>
+        </header>
+
+        <div class="tf-form-body">
+
+            <form
+                method="post"
+                enctype="multipart/form-data"
+                action="<%= isEditing ? '/tasks/' + t.id + '/edit' : '/tasks' %>?_csrf=<%= encodeURIComponent(csrf) %>"
+                class="needs-validation"
+                novalidate
+            >
+
+                <!-- Basic information -->
+                <section class="tf-section">
+                    <div class="tf-section-heading">
+                        <div class="tf-section-icon">
+                            <i class="bi bi-card-text"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="tf-section-title">Informasi tugas</h2>
+                            <p class="tf-section-description">
+                                Masukkan judul dan informasi utama tugas Anda.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 tf-field">
+                            <label for="task-title" class="tf-label">
+                                Judul tugas <span class="tf-required">*</span>
+                            </label>
+
+                            <input
+                                id="task-title"
+                                class="form-control tf-control"
+                                name="title"
+                                required
+                                maxlength="200"
+                                placeholder="Contoh: Membuat laporan praktikum jaringan"
+                                value="<%= t.title || '' %>"
+                            >
+
+                            <div class="invalid-feedback">
+                                Judul tugas wajib diisi.
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 tf-field">
+                            <label for="task-subject" class="tf-label">
+                                Mata pelajaran / kuliah
+                            </label>
+
+                            <input
+                                id="task-subject"
+                                class="form-control tf-control"
+                                name="subject"
+                                maxlength="150"
+                                placeholder="Contoh: Pemrograman Web"
+                                value="<%= t.subject || '' %>"
+                            >
+                        </div>
+
+                        <div class="col-12 col-md-6 tf-field">
+                            <label for="task-teacher" class="tf-label">
+                                Guru / dosen
+                            </label>
+
+                            <input
+                                id="task-teacher"
+                                class="form-control tf-control"
+                                name="teacher"
+                                maxlength="150"
+                                placeholder="Nama guru atau dosen"
+                                value="<%= t.teacher || '' %>"
+                            >
+                        </div>
+
+                        <div class="col-12 tf-field">
+                            <label for="task-category" class="tf-label">
+                                Kategori tugas
+                            </label>
+
+                            <select id="task-category" class="form-select tf-select" name="category_id">
+                                <option value="">Pilih kategori (opsional)</option>
+
+                                <% cats.forEach(function(c) { %>
+                                    <option
+                                        value="<%= c.id %>"
+                                        <%= String(t.category_id ?? '') === String(c.id) ? 'selected' : '' %>
+                                    >
+                                        <%= c.name %>
+                                    </option>
+                                <% }); %>
+                            </select>
+
+                            <div class="tf-help">
+                                Pilih kategori agar tugas lebih mudah dikelompokkan.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="tf-divider"></div>
+
+                <!-- Deadline and task settings -->
+                <section class="tf-section">
+                    <div class="tf-section-heading">
+                        <div class="tf-section-icon">
+                            <i class="bi bi-calendar2-check"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="tf-section-title">Jadwal dan pengaturan</h2>
+                            <p class="tf-section-description">
+                                Tentukan batas pengumpulan, tingkat prioritas, dan status.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6 tf-field">
+                            <label for="task-deadline" class="tf-label">
+                                Deadline <span class="tf-required">*</span>
+                            </label>
+
+                            <input
+                                id="task-deadline"
+                                class="form-control tf-control"
+                                type="datetime-local"
+                                name="deadline"
+                                required
+                                value="<%= t.deadline || '' %>"
+                            >
+
+                            <div class="invalid-feedback">
+                                Deadline wajib diisi.
+                            </div>
+
+                            <div class="tf-help">
+                                Pilih tanggal dan waktu batas pengumpulan.
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 tf-field">
+                            <label for="task-priority" class="tf-label">
+                                Prioritas
+                            </label>
+
+                            <select id="task-priority" class="form-select tf-select" name="priority">
+                                <% ['rendah', 'sedang', 'tinggi'].forEach(function(p) { %>
+                                    <option
+                                        value="<%= p %>"
+                                        <%= (t.priority || 'sedang') === p ? 'selected' : '' %>
+                                    >
+                                        <%= p.charAt(0).toUpperCase() + p.slice(1) %>
+                                    </option>
+                                <% }); %>
+                            </select>
+
+                            <div class="tf-help">
+                                Gunakan prioritas tinggi untuk tugas yang perlu didahulukan.
+                            </div>
+                        </div>
+
+                        <div class="col-12 col-md-6 tf-field">
+                            <label for="task-status" class="tf-label">
+                                Status pengerjaan
+                            </label>
+
+                            <select id="task-status" class="form-select tf-select" name="status">
+                                <% ['belum', 'proses', 'selesai'].forEach(function(s) { %>
+                                    <option
+                                        value="<%= s %>"
+                                        <%= (t.status || 'belum') === s ? 'selected' : '' %>
+                                    >
+                                        <%= s === 'belum'
+                                            ? 'Belum dikerjakan'
+                                            : s === 'proses'
+                                                ? 'Sedang dikerjakan'
+                                                : 'Selesai' %>
+                                    </option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="tf-divider"></div>
+
+                <!-- Description and notes -->
+                <section class="tf-section">
+                    <div class="tf-section-heading">
+                        <div class="tf-section-icon">
+                            <i class="bi bi-journal-text"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="tf-section-title">Deskripsi dan catatan</h2>
+                            <p class="tf-section-description">
+                                Simpan instruksi, detail pekerjaan, atau pengingat pribadi.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-12 tf-field">
+                            <label for="task-description" class="tf-label">
+                                Deskripsi tugas
+                            </label>
+
+                            <textarea
+                                id="task-description"
+                                class="form-control tf-control"
+                                name="description"
+                                rows="4"
+                                placeholder="Tuliskan instruksi, langkah pengerjaan, atau ketentuan tugas..."
+                            ><%= t.description || '' %></textarea>
+                        </div>
+
+                        <div class="col-12 tf-field">
+                            <label for="task-notes" class="tf-label">
+                                Catatan pribadi
+                            </label>
+
+                            <textarea
+                                id="task-notes"
+                                class="form-control tf-control tf-notes"
+                                name="notes"
+                                rows="3"
+                                placeholder="Contoh: Siapkan referensi sebelum mulai mengerjakan..."
+                            ><%= t.notes || '' %></textarea>
+
+                            <div class="tf-help">
+                                Catatan tambahan untuk membantu Anda mengingat hal penting.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <div class="tf-divider"></div>
+
+                <!-- Attachment -->
+                <section class="tf-section">
+                    <div class="tf-section-heading">
+                        <div class="tf-section-icon">
+                            <i class="bi bi-paperclip"></i>
+                        </div>
+
+                        <div>
+                            <h2 class="tf-section-title">Lampiran tugas</h2>
+                            <p class="tf-section-description">
+                                Tambahkan file pendukung jika diperlukan.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="tf-file-panel">
+                        <div class="tf-file-heading">
+                            <div class="tf-file-heading-icon">
+                                <i class="bi bi-cloud-arrow-up"></i>
+                            </div>
+
+                            <div>
+                                <h3 class="tf-file-title">Unggah file pendukung</h3>
+                                <p class="tf-file-description">
+                                    Pilih dokumen atau gambar dari perangkat Anda.
+                                </p>
+                            </div>
+                        </div>
+
+                        <input
+                            class="form-control tf-control"
+                            type="file"
+                            name="file"
+                            accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.jpg,.jpeg,.png"
+                        >
+
+                        <div class="tf-help">
+                            Format yang didukung oleh form: PDF, DOC, DOCX, XLS, XLSX,
+                            PPT, PPTX, JPG, JPEG, dan PNG. Batas ukuran serta validasi
+                            aktual mengikuti pengaturan server.
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Footer actions -->
+                <div class="tf-form-footer">
+                    <div class="tf-footer-note">
+                        <i class="bi bi-info-circle"></i>
+                        <span>Kolom bertanda <span class="tf-required">*</span> wajib diisi.</span>
+                    </div>
+
+                    <div class="tf-footer-actions">
+                        <a href="/tasks" class="tf-btn tf-btn-cancel">
+                            <i class="bi bi-x-lg"></i>
+                            Batal
+                        </a>
+
+                        <button type="submit" class="tf-btn tf-btn-save">
+                            <i class="bi bi-check2-circle"></i>
+                            <%= isEditing ? 'Simpan perubahan' : 'Simpan tugas' %>
+                        </button>
+                    </div>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <div class="text-center mt-3">
+        <span class="text-muted small">
+            <i class="bi bi-shield-check me-1"></i>
+            Periksa kembali informasi sebelum menyimpan tugas.
+        </span>
+    </div>
+</div>
+
+<script>
+    (() => {
+        const forms = document.querySelectorAll('.needs-validation');
+
+        Array.from(forms).forEach(form => {
+            form.addEventListener('submit', event => {
+                if (!form.checkValidity()) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+
+                form.classList.add('was-validated');
+            });
+        });
+    })();
+</script>
+
+<%- include('partials/foot') %>
