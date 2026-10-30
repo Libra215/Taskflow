@@ -1,10 +1,7 @@
-
 # Dependencies
 node_modules/
-package-lock.json
-taskflow.zip
 
-# Environment
+# Environment and secrets
 .env
 .env.*
 !.env.example
@@ -13,14 +10,28 @@ taskflow.zip
 logs/
 *.log
 npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Runtime
 pids/
 *.pid
+*.pid.lock
+*.seed
 
 # Cache
 .cache/
 .npm/
+
+# Diagnostic reports
+report.*.json
+
+# Coverage
+lib-cov/
+coverage/
+
+# Temporary files
+taskflow.zip
 
 # OS
 .DS_Store
@@ -29,13 +40,6 @@ Thumbs.db
 # IDE
 .vscode/
 
-# Session dan kredensial
+# WhatsApp authentication and sessions
 auth_info/
 sessions/
-tokens/
-
-# Database produksi dan backup
-*.sql
-*.sqlite
-*.db
-*.dump
